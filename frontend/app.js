@@ -221,7 +221,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btn-create-invoice').addEventListener('click', () => navigateTo('invoice-entry'));
 
     // --- Feedback ---
-    function showToast(msg, type = 'success') {
+    let toastCallback = null;
+
+    function showToast(msg, type = 'success', callback = null) {
+        toastCallback = callback;
         const modal = document.getElementById('message-modal');
         const text = document.getElementById('message-text');
         const iconDiv = document.getElementById('message-icon');
@@ -255,6 +258,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.closeMessageModal = function() {
         document.getElementById('message-modal').classList.remove('active');
+        if (typeof toastCallback === 'function') {
+            const cb = toastCallback;
+            toastCallback = null; // Clear before calling to avoid loops
+            cb();
+        }
     };
 
     // --- Profile & Business Branding ---
@@ -1109,34 +1117,72 @@ document.addEventListener('DOMContentLoaded', () => {
     //  INVOICE MODULE  (injected & Receipts)
     // ==============================================================
 
+    function getFinancialYear(dateStr) {
+        if (!dateStr) return null;
+        const d = new Date(dateStr);
+        if (isNaN(d.getTime())) return null;
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1; // 0-indexed
+        if (month >= 4) {
+            const nextYear = (year + 1).toString().slice(-2);
+            return `${year}-${nextYear}`;
+        } else {
+            const prevYear = year - 1;
+            const currentYearSuffix = year.toString().slice(-2);
+            return `${prevYear}-${currentYearSuffix}`;
+        }
+    }
+
     async function loadInvoiceList() {
         const tbody = document.getElementById('invoice-list-body');
         if (!tbody) return;
         tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;">Loading...</td></tr>';
 
         try {
-            // We fetch the Dashboard Summary to get the amount paid per invoice quickly
-            // By doing this we can calculate if it's Unpaid, Partially Paid, or Paid
             const res = await fetch(`${API_BASE}/invoices`);
             const invoices = await res.json();
 
-            const summaryRes = await fetch(`${API_BASE}/dashboard/summary`);
-            const summaryData = await summaryRes.json();
+            // Handle FY Filtering
+            const fyFilter = document.getElementById('history-fy-filter');
+            const selectedFY = fyFilter ? fyFilter.value : 'all';
+            
+            // Collect all available FYs for the dropdown
+            const availableFYs = new Set();
+            invoices.forEach(inv => {
+                if (inv.invoice_date) {
+                    const fy = getFinancialYear(inv.invoice_date);
+                    if (fy) availableFYs.add(fy);
+                }
+            });
 
-            // Re-fetch full invoices with joined Receipts amount would be ideal, 
-            // but for now we can fetch the summary which groups them, or just fetch the individual receipts!
-            // Actually, the new dashboard/summary endpoint only returns FY aggregates, NOT individual invoices.
-            // Let's modify the table generation below to dynamically fetch receipt sums, or just rely on a new endpoint if we needed.
-            // Wait, let's just make a separate call per invoice for now, or build an aggregate endpoint.
-            // Even better: since we don't have an endpoint returning invoice + paid amount yet, let's just show a Record Payment button.
+            if (fyFilter && fyFilter.options.length <= 1) { // Only populate if empty (except 'All')
+                Array.from(availableFYs).sort().reverse().forEach(fy => {
+                    const opt = document.createElement('option');
+                    opt.value = fy;
+                    opt.textContent = `FY ${fy}`;
+                    fyFilter.appendChild(opt);
+                });
+                $(fyFilter).off('change').on('change', () => loadInvoiceList());
+            }
 
             if (!invoices.length) {
                 tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">No invoices yet. <a href="#" onclick="navigateTo(\'invoice-new\')">Create one!</a></td></tr>';
                 return;
             }
+
+            // Filter invoices by FY
+            const filteredInvoices = selectedFY === 'all' 
+                ? invoices 
+                : invoices.filter(inv => getFinancialYear(inv.invoice_date) === selectedFY);
+
+            if (!filteredInvoices.length) {
+                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:#888;">No invoices found for FY ${selectedFY}.</td></tr>`;
+                return;
+            }
+
             tbody.innerHTML = '';
 
-            for (const inv of invoices) {
+            for (const inv of filteredInvoices) {
                 // Fetch receipts for this invoice
                 let amountPaid = 0;
                 try {
@@ -1165,9 +1211,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td style="text-align:right; white-space: nowrap;"><strong>&#8377;&nbsp;${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
                     <td style="text-align:center;">${statusBadge}</td>
                     <td style="white-space: nowrap;">
-                        <button class="btn btn-secondary" style="padding:4px 8px;font-size:12px;margin-right:2px;" onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')"><i class="fas fa-file-pdf"></i></button>
-                        ${balance > 0 ? `<button class="btn btn-primary" style="padding:4px 8px;font-size:12px;margin-right:2px;" onclick="openPaymentModal('${inv.id}', ${balance})"><i class="fas fa-coins"></i></button>` : ''}
-                        <button class="btn btn-link" style="color:#e53935;padding:4px 8px;font-size:12px;" onclick="deleteInvoice('${inv.id}')"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-secondary" title="Generate PDF" style="padding:4px 8px;font-size:12px;margin-right:2px;" onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')"><i class="fas fa-file-pdf"></i></button>
+                        ${balance > 0 ? `<button class="btn btn-primary" title="Add Payment" style="padding:4px 8px;font-size:12px;margin-right:2px;" onclick="openPaymentModal('${inv.id}', ${balance})"><i class="fas fa-coins"></i></button>` : ''}
+                        <button class="btn btn-link" title="Delete Invoice" style="color:#e53935;padding:4px 8px;font-size:12px;" onclick="deleteInvoice('${inv.id}')"><i class="fas fa-trash"></i></button>
                     </td>
                 `;
                 tbody.appendChild(tr);
@@ -1250,20 +1296,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function partyInfoHtml(p, addrLine1Key, addrLine2Key) {
         if (!p) return '';
+        const name = p.name || p.branch_name || '';
         const addr1 = p[addrLine1Key] || p.address_line_1 || '';
         const addr2 = p[addrLine2Key] || p.address_line_2 || '';
-        return `<div style="font-size:12px;line-height:1.5;">
-            <strong>${p.name || p.branch_name || ''}</strong>
-            ${addr1 ? '<br>' + addr1 : ''}${addr2 ? ', ' + addr2 : ''}
-            ${p.city ? '<br>' + p.city : ''}${p.pincode ? ' - ' + p.pincode : ''}
-            ${p.state_name ? '<br>' + p.state_name : ''}${p.state_code ? ' (' + p.state_code + ')' : ''}
-            ${p.gstin ? '<br><small>GSTIN: ' + p.gstin + '</small>' : ''}
-        </div>`;
+        const gstin = p.gstin || '';
+        
+        let html = `<div style="font-size:12px;line-height:1.5;"><strong>${name}</strong>`;
+        if (addr1) html += `<br>${addr1}`;
+        if (addr2) html += `, ${addr2}`;
+        if (p.city) html += `<br>${p.city}`;
+        if (p.pincode) html += ` - ${p.pincode}`;
+        if (p.state_name) html += `<br>${p.state_name}`;
+        if (p.state_code) html += ` (${p.state_code})`;
+        if (gstin) html += `<br><small>GSTIN: ${gstin}</small>`;
+        html += `</div>`;
+        return html;
     }
 
     async function openNewInvoice() {
-        document.getElementById('btn-save-pdf').disabled = true;
-        document.getElementById('btn-save-pdf').dataset.invoiceId = '';
         document.getElementById('invoice-items-body').innerHTML = '';
         document.getElementById('invoice-form').reset();
         _invoiceItemIdx = 0;
@@ -1278,74 +1328,93 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Seller dropdown
         const companySel = document.getElementById('inv-company-select');
+        if (!companySel) return; 
         if ($(companySel).hasClass('select2-hidden-accessible')) $(companySel).select2('destroy');
         companySel.innerHTML = '';
         try {
             const cr = await fetch(`${API_BASE}/profiles`);
             const companies = await cr.json();
-            companies.forEach(c => { const o = new Option(c.name, c.id, c.is_default, c.is_default); companySel.appendChild(o); });
-            $(companySel).select2({ placeholder: '-- Select Seller --', width: '100%' });
-            const def = companies.find(c => c.is_default) || companies[0];
-            if (def) document.getElementById('inv-seller-info').innerHTML = partyInfoHtml(def, 'address_line_1', 'address_line_2');
-            $(companySel).off('select2:select').on('select2:select', async function (e) {
-                const cr2 = await fetch(`${API_BASE}/profiles/${e.params.data.id}`);
-                const comp = await cr2.json();
-                document.getElementById('inv-seller-info').innerHTML = partyInfoHtml(comp, 'address_line_1', 'address_line_2');
-                recalcInvoiceTotals();
-            });
-        } catch (e) { }
+            if (Array.isArray(companies)) {
+                companies.forEach(c => { const o = new Option(c.name, c.id, c.is_default, c.is_default); companySel.appendChild(o); });
+                $(companySel).select2({ placeholder: '-- Select Seller --', width: '100%' });
+                const def = companies.find(c => c.is_default) || companies[0];
+                const sellerInfoEl = document.getElementById('inv-seller-info');
+                if (def && sellerInfoEl) sellerInfoEl.innerHTML = partyInfoHtml(def, 'address_line_1', 'address_line_2');
+                
+                $(companySel).off('select2:select').on('select2:select', async function (e) {
+                    const cr2 = await fetch(`${API_BASE}/profiles/${e.params.data.id}`);
+                    const comp = await cr2.json();
+                    if (sellerInfoEl) sellerInfoEl.innerHTML = partyInfoHtml(comp, 'address_line_1', 'address_line_2');
+                    recalcInvoiceTotals();
+                });
+            }
+        } catch (e) { console.error("Seller init error", e); }
 
         // Client dropdown
         const clientSel = document.getElementById('inv-client-select');
+        if (!clientSel) return;
         if ($(clientSel).hasClass('select2-hidden-accessible')) $(clientSel).select2('destroy');
         clientSel.innerHTML = '<option value="">-- Select Client --</option>';
         const shipSel = document.getElementById('inv-shipping-select');
-        if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
-        shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
-        $(shipSel).select2({ placeholder: '-- Select client first --', allowClear: true, width: '100%' });
+        if (shipSel && $(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
+        if (shipSel) {
+            shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
+            $(shipSel).select2({ placeholder: '-- Select client first --', allowClear: true, width: '100%' });
+        }
         try {
             const cr2 = await fetch(`${API_BASE}/clients`);
             const clients = await cr2.json();
-            clients.forEach(c => clientSel.appendChild(new Option(c.name, c.id)));
-            $(clientSel).select2({ placeholder: '-- Select Client --', allowClear: true, width: '100%' });
-            $(clientSel).off('select2:select select2:unselect').on('select2:select', async function (e) {
-                const cid = e.params.data.id;
-                const cr3 = await fetch(`${API_BASE}/clients/${cid}`);
-                const client = await cr3.json();
-                document.getElementById('inv-buyer-info').innerHTML = partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
-                // Default: consignee = same as billing, show buyer info there too
-                document.getElementById('inv-consignee-info').innerHTML =
-                    '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
-                    partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
-                // Reload shipping for this client
-                if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
-                shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
-                const sr = await fetch(`${API_BASE}/clients/${cid}/shipping`);
-                const addrs = await sr.json();
-                addrs.forEach(s => shipSel.appendChild(new Option(s.branch_name || s.address_line_1, s.id)));
-                $(shipSel).select2({ placeholder: '-- Same as Billing --', allowClear: true, width: '100%' });
-                $(shipSel).off('select2:select select2:unselect').on('select2:select', async function (e2) {
-                    const sr2 = await fetch(`${API_BASE}/shipping/${e2.params.data.id}`);
-                    const ship = await sr2.json();
-                    document.getElementById('inv-consignee-info').innerHTML = partyInfoHtml(ship, 'address_line_1', 'address_line_2');
+            if (Array.isArray(clients)) {
+                clients.forEach(c => clientSel.appendChild(new Option(c.name, c.id)));
+                $(clientSel).select2({ placeholder: '-- Select Client --', allowClear: true, width: '100%' });
+                $(clientSel).off('select2:select select2:unselect').on('select2:select', async function (e) {
+                    const cid = e.params.data.id;
+                    const cr3 = await fetch(`${API_BASE}/clients/${cid}`);
+                    const client = await cr3.json();
+                    const buyerInfoEl = document.getElementById('inv-buyer-info');
+                    const consigneeInfoEl = document.getElementById('inv-consignee-info');
+                    
+                    if (buyerInfoEl) buyerInfoEl.innerHTML = partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                    if (consigneeInfoEl) {
+                        consigneeInfoEl.innerHTML = '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
+                                                    partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                    }
+                    
+                    if (shipSel) {
+                        if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
+                        shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
+                        const sr = await fetch(`${API_BASE}/clients/${cid}/shipping`);
+                        const addrs = await sr.json();
+                        addrs.forEach(s => shipSel.appendChild(new Option(s.branch_name || s.address_line_1, s.id)));
+                        $(shipSel).select2({ placeholder: '-- Same as Billing --', allowClear: true, width: '100%' });
+                        $(shipSel).off('select2:select select2:unselect').on('select2:select', async function (e2) {
+                            const sr2 = await fetch(`${API_BASE}/shipping/${e2.params.data.id}`);
+                            const ship = await sr2.json();
+                            if (consigneeInfoEl) consigneeInfoEl.innerHTML = partyInfoHtml(ship, 'address_line_1', 'address_line_2');
+                            recalcInvoiceTotals();
+                        }).on('select2:unselect', function () {
+                            if (consigneeInfoEl) {
+                                consigneeInfoEl.innerHTML = '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
+                                                            partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                            }
+                            recalcInvoiceTotals();
+                        });
+                    }
                     recalcInvoiceTotals();
                 }).on('select2:unselect', function () {
-                    // Revert to buyer address when shipping cleared
-                    document.getElementById('inv-consignee-info').innerHTML =
-                        '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
-                        partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                    const buyerInfoEl = document.getElementById('inv-buyer-info');
+                    const consigneeInfoEl = document.getElementById('inv-consignee-info');
+                    if (buyerInfoEl) buyerInfoEl.innerHTML = '';
+                    if (consigneeInfoEl) consigneeInfoEl.innerHTML = '';
+                    if (shipSel) {
+                        if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
+                        shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
+                        $(shipSel).select2({ placeholder: '-- Select client first --', allowClear: true, width: '100%' });
+                    }
                     recalcInvoiceTotals();
                 });
-                recalcInvoiceTotals();
-            }).on('select2:unselect', function () {
-                document.getElementById('inv-buyer-info').innerHTML = '';
-                document.getElementById('inv-consignee-info').innerHTML = '';
-                if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
-                shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
-                $(shipSel).select2({ placeholder: '-- Select client first --', allowClear: true, width: '100%' });
-                recalcInvoiceTotals();
-            });
-        } catch (e) { }
+            }
+        } catch (e) { console.error("Client init error", e); }
 
         _invoiceItemRowAdder();  // add first blank row
         document.getElementById('invoice-form').onsubmit = submitInvoice;
@@ -1374,6 +1443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tbody.appendChild(tr);
     }
     // Expose immediately after definition — NOT inside the function body
+    window.addInvoiceItem = _invoiceItemRowAdder;
     window._invoiceItemRowAdder = _invoiceItemRowAdder;
 
     function recalcInvoiceTotals() {
@@ -1443,15 +1513,30 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error((await res.json()).detail);
             const data = await res.json();
-            showToast('Invoice saved! Click Download PDF.');
-            const pdfBtn = document.getElementById('btn-save-pdf');
-            pdfBtn.disabled = false;
-            pdfBtn.onclick = () => downloadInvoicePdf(data.invoice_id, payload.invoice_no);
+            
+            // Auto-trigger PDF download
+            await downloadInvoicePdf(data.invoice_id, payload.invoice_no);
+            
+            showToast('Invoice saved successfully.', 'success', () => {
+                navigateTo('invoice-list');
+            });
         } catch (e) { showToast('Save failed: ' + e.message, 'error'); }
         finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save"></i> Save Invoice'; }
     }
 
     function _invoiceOpenNewProxy() { return openNewInvoice(); }
+
+    window.clearInvoiceForm = function() {
+        if (!confirm("Clear all data in this invoice?")) return;
+        const form = document.getElementById('invoice-form');
+        const body = document.getElementById('invoice-items-body');
+        if (form) form.reset();
+        if (body) {
+            body.innerHTML = '';
+            _invoiceItemRowAdder(); // Add back one blank row
+        }
+        recalcInvoiceTotals();
+    };
 
     // Init — expose navigateTo globally BEFORE first call so inline onclick works
     window.navigateTo = navigateTo;

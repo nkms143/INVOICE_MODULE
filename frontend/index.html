@@ -583,8 +583,12 @@
         <div class="section-card">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
                 <h2 style="margin:0;">Invoice History</h2>
-                <button class="btn btn-primary" onclick="navigateTo('invoice-new')"><i class="fas fa-plus"></i> New
-                    Invoice</button>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <select id="history-fy-filter" class="form-control" style="width:150px; padding: 8px; border-radius: 6px; border: 1px solid #ddd;">
+                        <option value="all">All FYs</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="navigateTo('invoice-new')"><i class="fas fa-plus"></i> New Invoice</button>
+                </div>
             </div>
             <div class="table-wrapper">
                 <table class="data-table" id="invoice-list-table">
@@ -770,13 +774,11 @@
                 </div>
                 <div id="inv-tax-type-badge" style="margin-bottom:10px;font-size:12px;color:#888;"></div>
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
-                    <button type="button" class="btn btn-secondary" onclick="navigateTo('invoice-list')">Cancel</button>
+                    <button type="button" class="btn btn-secondary" onclick="clearInvoiceForm()">
+                        <i class="fas fa-eraser"></i> Clear
+                    </button>
                     <button type="submit" class="btn btn-primary" id="btn-save-invoice">
                         <i class="fas fa-save"></i> Save Invoice
-                    </button>
-                    <button type="button" class="btn btn-primary" id="btn-save-pdf"
-                        style="background:var(--accent-secondary,#16a34a);" disabled>
-                        <i class="fas fa-file-pdf"></i> Download PDF
                     </button>
                 </div>
 

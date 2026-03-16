@@ -21,6 +21,7 @@ htmlcov/
 execution/*.db
 execution/*.db.*
 *.sqbpro
+*.pdf
 
 # Generated Artifacts
 execution/*.pdf

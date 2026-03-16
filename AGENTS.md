@@ -90,21 +90,15 @@ Never use relative `"invoices.db"` — the working directory varies depending on
 - CRUD: `GET`, `POST /api/profiles`, `GET/PUT/DELETE /api/profiles/{id}`, `PUT /api/profiles/{id}/default`
 - Frontend: Sidebar drill-down → Companies List / Add Company / Update Company pages
 
-#### ✅ Clients Directory (`/api/clients` + `/api/shipping`)
-- Tables: `clients`, `shipping_addresses`
-- `clients` columns: `id, name, gstin, email, mobile, landline, fax, billing_address_line_1, billing_address_line_2, city, state_name, state_code, country, pincode, place_id`
-- `shipping_addresses` columns: `id, client_id, branch_name, gstin, address_line_1, address_line_2, city, state_name, state_code, country, pincode, place_id`
-- CRUD: `GET/POST /api/clients`, `GET/PUT/DELETE /api/clients/{id}`, `GET /api/clients/{id}/shipping`
-- CRUD: `GET/POST /api/shipping`, `GET/PUT/DELETE /api/shipping/{id}`
-- Frontend: Sidebar → Clients List / Add Client / Update Client / Shipping List / Add Shipping / Update Shipping
-- Default shipping fallback: if `shipping_addresses` has no rows for a client, fall back to billing address in `clients`
+#### ✅ Invoice Generation (`/api/invoices`)
+- Tables: `invoices`, `invoice_items`, `receipts`
+- Features: Auto-PDF download, auto-numbering, FY filtering, GST calculation.
+- CRUD: `POST /api/invoices`, `GET /api/invoices`, `DELETE /api/invoices/{id}`
+- Frontend: Sidebar → Invoices History / New Invoice
 
-### Frontend Architecture Rules
-- Form fields use **CSS classes** (not IDs) so templates can be injected multiple times without duplicate-ID errors
-- `initAddressAutomation(formId)` — shared function: Country → State (gstStateCodes) → City (countriesnow API) → Pincode (postalpincode API, silently fails)
-  - City Select2 always initialized with `tags: true` so users can type unlisted cities
-  - Pincode fetch uses `fetch().catch(()=>{})` (not `$.ajax`) to silently swallow 404s
-- Multi-step selects (e.g. Update Shipping: pick client → pick address) must use `select2:select` / `select2:unselect` events — NOT generic `.on('change')` — to avoid Select2 losing its rendered selection on programmatic DOM updates
-- Destroy+re-init Select2 before clearing a dependent dropdown's options to prevent event bleed
+#### ✅ Reports & Analytics (`/api/dashboard`)
+- Endpoints: `/api/dashboard/summary`, `/api/dashboard/charts`
+- Features: Monthly trends, Top Clients/Products tables, FY aggregation.
 
-### 🔜 Next Module: Invoice Generation
+### 🔜 Next Module: Data Export & Backup
+- Features: Excel exports, automated backup verify.
