@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Professional Invoicing System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- jQuery & Select2 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="light-theme">
+    <div id="app">
+        <!-- Sidebar Navigation -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <i class="fas fa-file-invoice logo-icon"></i>
+                <span class="logo-text" id="owner-name">Loading...</span>
+            </div>
+            <ul class="nav-links">
+                <li id="nav-dashboard-group">
+                    <a href="#" class="nav-link" data-page="dashboard"><i class="fas fa-chart-line"></i> Dashboard</a>
+                </li>
+                <li class="has-submenu" id="nav-profile-group">
+                    <a href="#" class="nav-link" data-page="profile-list"><i class="fas fa-building"></i> Company
+                        Profile <i class="fas fa-chevron-down submenu-icon"></i></a>
+                    <ul class="submenu">
+                        <li data-page="profile-add"><a href="#"><i class="fas fa-plus-circle"></i> Add Company</a></li>
+                        <li data-page="profile-update"><a href="#"><i class="fas fa-edit"></i> Update Company</a></li>
+                    </ul>
+                </li>
+                <li class="has-submenu" id="nav-clients-group">
+                    <a href="#" class="nav-link" data-page="clients-list"><i class="fas fa-users"></i> Clients Directory
+                        <i class="fas fa-chevron-down submenu-icon"></i></a>
+                    <ul class="submenu">
+                        <li data-page="client-add"><a href="#"><i class="fas fa-user-plus"></i> Add Client</a></li>
+                        <li data-page="client-update"><a href="#"><i class="fas fa-user-edit"></i> Update Client</a>
+                        </li>
+                    </ul>
+                </li>
+                <li class="has-submenu" id="nav-shipping-group">
+                    <a href="#" class="nav-link" data-page="shipping-list"><i class="fas fa-truck"></i> Shipping
+                        Addresses <i class="fas fa-chevron-down submenu-icon"></i></a>
+                    <ul class="submenu">
+                        <li data-page="shipping-add"><a href="#"><i class="fas fa-map-marker-alt"></i> Add Shipping</a>
+                        </li>
+                        <li data-page="shipping-update"><a href="#"><i class="fas fa-edit"></i> Update Shipping</a></li>
+                    </ul>
+                </li>
+                <li class="has-submenu" id="nav-invoice-group">
+                    <a href="#" class="nav-link" data-page="invoice-list"><i class="fas fa-file-invoice-dollar"></i> GST
+                        Invoices
+                        <i class="fas fa-chevron-down submenu-icon"></i></a>
+                    <ul class="submenu">
+                        <li data-page="invoice-new"><a href="#"><i class="fas fa-plus-circle"></i> New Invoice</a></li>
+                        <li data-page="invoice-list"><a href="#"><i class="fas fa-list"></i> Invoice List</a></li>
+                    </ul>
+                </li>
+
+                <!-- Reports Module -->
+                <li id="nav-reports-group">
+                    <a href="#" class="nav-link" data-page="reports"><i class="fas fa-chart-pie"></i> Reports &
+                        Analytics</a>
+                </li>
+                <!-- Settings Module -->
+                <li id="nav-settings-group">
+                    <a href="#" class="nav-link" data-page="settings"><i class="fas fa-cog"></i> Settings & Data</a>
+                </li>
+            </ul>
+        </nav>
+
+        <!-- Main Content Wrapper -->
+        <main class="main-content">
+            <!-- Dynamic Header -->
+            <header class="content-header">
+                <div>
+                    <h1 id="page-title">Business Profile</h1>
+                    <p id="page-subtitle">Your company details for invoice headers.</p>
+                </div>
+                <!-- Action button hidden for now -->
+                <div class="header-actions" style="display: none;">
+                    <button id="btn-create-invoice" class="btn btn-primary"><i class="fas fa-plus"></i> NEW
+                        INVOICE</button>
+                </div>
+            </header>
+
+            <!-- Page content hidden to focus on Business Identity -->
+            <!-- 
+            <section id="dashboard-page" class="page"> ... </section>
+            <section id="invoice-entry-page" class="page"> ... </section>
+            -->
+
+
+            <!-- Clients List Page -->
+            <section id="clients-list-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 1100px;">
+                    <div class="box-header mb-4">
+                        <h2>Your Clients</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="clients-table">
+                            <thead>
+                                <tr>
+                                    <th>Sl No</th>
+                                    <th>Client Name</th>
+                                    <th>Billing Address</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>GSTIN</th>
+                                </tr>
+                            </thead>
+                            <tbody><!-- Loaded via JS --></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Client Add Page -->
+            <section id="client-add-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <form id="client-add-form">
+                        <div id="client-add-fields"></div>
+                        <div class="status-msg text-accent mb-2" style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 text-right">
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> ADD
+                                CLIENT</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Client Update Page -->
+            <section id="client-update-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <div class="form-group mb-4">
+                        <label>Select Client to Update / Delete</label>
+                        <select id="client-select" style="width:100%; max-width:450px;"></select>
+                    </div>
+                    <form id="client-update-form" style="display:none;">
+                        <input type="hidden" id="update-client-id">
+                        <div id="client-update-fields"></div>
+                        <div class="status-msg text-accent mb-2" style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 d-flex" style="justify-content:space-between;">
+                            <button type="button" id="btn-delete-client" class="btn btn-danger btn-lg"><i
+                                    class="fas fa-trash"></i> DELETE</button>
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> UPDATE
+                                CLIENT</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Shipping List Page -->
+            <section id="shipping-list-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 1100px;">
+                    <div class="box-header mb-4">
+                        <h2>All Shipping Addresses</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="shipping-table">
+                            <thead>
+                                <tr>
+                                    <th>Sl No</th>
+                                    <th>Client Name</th>
+                                    <th>Branch / Site</th>
+                                    <th>Address</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>GSTIN</th>
+                                </tr>
+                            </thead>
+                            <tbody><!-- Loaded via JS --></tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Shipping Add Page -->
+            <section id="shipping-add-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <form id="shipping-add-form">
+                        <div class="form-group mb-4">
+                            <label>Select Client</label>
+                            <select id="shipping-client-select-add" class="shipping-client-select"
+                                style="width:100%;"></select>
+                        </div>
+                        <div id="shipping-add-fields"></div>
+                        <div class="status-msg text-accent mb-2" style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 text-right">
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> ADD
+                                SHIPPING ADDRESS</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Shipping Update Page -->
+            <section id="shipping-update-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <div class="form-grid-2 mb-4">
+                        <div class="form-group">
+                            <label>Select Client</label>
+                            <select id="shipping-client-select-update" style="width:100%;"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Select Shipping Address</label>
+                            <select id="shipping-address-select" style="width:100%;"></select>
+                        </div>
+                    </div>
+                    <form id="shipping-update-form" style="display:none;">
+                        <input type="hidden" id="update-shipping-id">
+                        <div id="shipping-update-fields"></div>
+                        <div class="status-msg text-accent mb-2" style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 d-flex" style="justify-content:space-between;">
+                            <button type="button" id="btn-delete-shipping" class="btn btn-danger btn-lg"><i
+                                    class="fas fa-trash"></i> DELETE</button>
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> UPDATE
+                                SHIPPING</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+
+            <!-- Dashboard Page -->
+            <section id="dashboard-page" class="page active">
+
+                <!-- Financial Analytics Module -->
+                <div class="card p-4 mx-auto mb-4" style="max-width: 1200px; background-color: #f8f9fa;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
+                        <h2 style="margin:0; font-size: 1.25rem; color: var(--primary-color);"><i
+                                class="fas fa-chart-line"></i> Financial Analytics</h2>
+                        <div style="display:flex; align-items:center; gap: 10px;">
+                            <label style="font-size:0.9rem; font-weight:600; color:#555;">Financial Year</label>
+                            <select id="fy-filter" class="form-control" style="width: 150px;"
+                                onchange="loadDashboardAnalytics()">
+                                <option value="">Loading...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                        <!-- Revenue KPI -->
+                        <div class="stat-card" style="background: white; border-top: 4px solid #4CAF50;">
+                            <h3 style="color: #666; font-size: 0.9rem; text-transform: uppercase;">Total Revenue
+                                Generated</h3>
+                            <p id="kpi-total-revenue"
+                                style="font-size: 1.8rem; font-weight: 700; color: #333; margin: 10px 0; white-space: nowrap;">
+                                ₹ 0.00</p>
+                            <small style="color: #888;" id="kpi-invoice-count">0 invoices generated</small>
+                        </div>
+
+                        <!-- Receivables KPI -->
+                        <div class="stat-card" style="background: white; border-top: 4px solid #e53935;">
+                            <h3 style="color: #666; font-size: 0.9rem; text-transform: uppercase;">Bills Receivable</h3>
+                            <p id="kpi-bills-receivable"
+                                style="font-size: 1.8rem; font-weight: 700; color: #333; margin: 10px 0; white-space: nowrap;">
+                                ₹ 0.00</p>
+                            <small style="color: #888;" id="kpi-amount-received">₹ 0.00 collected so far</small>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div style="display:grid; grid-template-columns: 1fr; gap: 20px; margin-top: 20px;">
+                        <!-- Revenue Trend Chart (Full Width) -->
+                        <div class="stat-card" style="background: white; border: 1px solid #eee;">
+                            <h3 style="color: #666; font-size: 0.9rem; text-transform: uppercase; margin-bottom: 15px;">
+                                Monthly Revenue Trend</h3>
+                            <div style="position: relative; height: 350px; width: 100%;">
+                                <canvas id="chart-revenue-trend"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Invoices Widget -->
+                <div class="card p-4 mx-auto" style="max-width: 1200px;">
+                    <div class="box-header mb-4">
+                        <h2>Recent Invoices</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table" id="recent-invoices-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice No.</th>
+                                    <th>Date</th>
+                                    <th>Client</th>
+                                    <th class="right">Taxable (₹)</th>
+                                    <th class="right">Tax (₹)</th>
+                                    <th class="right">Grand Total (₹)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </section>
+
+            <!-- Profile List Page -->
+            <section id="profile-list-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 1000px;">
+                    <div class="box-header mb-4">
+                        <h2>Your Companies</h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="companies-table">
+                            <thead>
+                                <tr>
+                                    <th>Sl No</th>
+                                    <th>Name of the Company</th>
+                                    <th>Address</th>
+                                    <th>City</th>
+                                    <th>State</th>
+                                    <th>GST Number</th>
+                                    <th>Default</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Loaded via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Profile Add Page -->
+            <section id="profile-add-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <form id="profile-add-form">
+                        <div id="profile-add-fields"></div>
+                        <div id="profile-add-status-msg" class="status-msg text-accent mb-2"
+                            style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 text-right">
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> ADD
+                                COMPANY</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Profile Update Page -->
+            <section id="profile-update-page" class="page">
+                <div class="card p-4 mx-auto" style="max-width: 900px;">
+                    <div class="form-group mb-4">
+                        <label>Select Company to Update</label>
+                        <select id="company-select" class="form-control" style="width: 100%; max-width: 400px;">
+                            <option value="">-- Select Company --</option>
+                        </select>
+                    </div>
+
+                    <form id="profile-update-form" style="display: none;">
+                        <input type="hidden" name="id" id="update-company-id">
+                        <div id="profile-update-fields"></div>
+                        <div id="profile-update-status-msg" class="status-msg text-accent mb-2"
+                            style="min-height: 1.2rem; font-size: 0.85rem;"></div>
+                        <div class="actions mt-4 d-flex" style="justify-content: space-between;">
+                            <button type="button" id="btn-delete-company" class="btn btn-danger btn-lg"><i
+                                    class="fas fa-trash"></i> DELETE</button>
+                            <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save"></i> UPDATE
+                                COMPANY</button>
+                        </div>
+                    </form>
+                </div>
+            </section>
+
+            <!-- Common Form Template Placeholder -->
+            <template id="profile-form-template">
+                <div class="form-section-header">
+                    <i class="fas fa-id-card"></i>
+                    <h3>Business Identity</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group span-2">
+                        <label>Company / Individual Name</label>
+                        <input type="text" name="name" required placeholder="Full Legal Name">
+                    </div>
+                    <div class="form-group">
+                        <label>GSTIN</label>
+                        <input type="text" name="gstin" placeholder="GST Number">
+                    </div>
+                    <div class="form-group">
+                        <label>PAN Number</label>
+                        <input type="text" name="pan_number" placeholder="Income Tax PAN">
+                    </div>
+                </div>
+
+                <div class="form-section-header mt-4">
+                    <i class="fas fa-address-book"></i>
+                    <h3>Contact Details</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group span-2">
+                        <label>Email ID</label>
+                        <input type="email" name="email" placeholder="example@domain.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Mobile Number</label>
+                        <input type="text" name="mobile" placeholder="+91 xxxxxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Landline Number</label>
+                        <input type="text" name="landline" placeholder="0xx-xxxxxxx">
+                    </div>
+                    <div class="form-group">
+                        <label>Fax Number</label>
+                        <input type="text" name="fax" placeholder="Fax Number">
+                    </div>
+                </div>
+
+                <div class="form-section-header mt-4">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <h3>Registered Address</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group span-2">
+                        <label>Address Line 1</label>
+                        <input type="text" name="address_line_1" required placeholder="Street, Building, Flat No.">
+                    </div>
+                    <div class="form-group span-2">
+                        <label>Address Line 2 (Optional)</label>
+                        <input type="text" name="address_line_2" placeholder="Locality, Landmark">
+                    </div>
+                    <div class="form-group">
+                        <label>Country</label>
+                        <select name="country" class="profile-country" style="width: 100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>State / UT</label>
+                        <select name="state_name" class="profile-state" style="width: 100%;"></select>
+                        <input type="hidden" name="state_code" class="profile-state-code">
+                        <input type="hidden" name="place_id" class="profile-place-id">
+                    </div>
+                    <div class="form-group">
+                        <label>City</label>
+                        <select name="city" class="profile-city" style="width: 100%;"></select>
+                    </div>
+                    <div class="form-group">
+                        <label>Pincode</label>
+                        <input type="text" name="pincode" class="profile-pincode" placeholder="Postal Code">
+                    </div>
+                </div>
+
+                <div class="form-section-header mt-4">
+                    <i class="fas fa-university"></i>
+                    <h3>Banking Details</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group"><label>Bank Name</label><input type="text" name="bank_name"></div>
+                    <div class="form-group"><label>Branch Name</label><input type="text" name="bank_branch">
+                    </div>
+                    <div class="form-group"><label>Account No.</label><input type="text" name="bank_account_no">
+                    </div>
+                    <div class="form-group"><label>IFSC Code</label><input type="text" name="bank_ifsc"></div>
+                    <div class="form-group span-2"><label>Bank Address</label><input type="text" name="bank_address">
+                    </div>
+                </div>
+
+                <div class="form-section-header mt-4">
+                    <i class="fas fa-file-contract"></i>
+                    <h3>Legal & Declaration</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group span-2">
+                        <label>Declaration Text</label>
+                        <textarea name="declaration_text" rows="2"
+                            placeholder="e.g. Certified that the particulars given above are true and correct..."></textarea>
+                    </div>
+                    <div class="form-group span-2">
+                        <label>Terms & Conditions</label>
+                        <textarea name="terms_conditions" rows="3"
+                            placeholder="1. Payment within 15 days..."></textarea>
+                    </div>
+                </div>
+                <div class="form-section-header mt-4">
+                    <i class="fas fa-image"></i>
+                    <h3>Favicon / Logo</h3>
+                </div>
+                <div class="form-grid-2">
+                    <div class="form-group span-2">
+                        <input type="hidden" name="favicon_url" class="favicon-url-hidden">
+                        <label>Upload Brand Icon (.ico, .png, .jpg, .svg)</label>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <input type="file" class="profile-favicon-input" accept=".ico,.png,.jpg,.jpeg,.svg" style="flex-grow:1; border:1px solid #ddd; padding:8px; border-radius:4px;">
+                            <div class="favicon-preview" style="width:40px; height:40px; border:1px solid #ddd; display:flex; align-items:center; justify-content:center; background:#f9f9f9; border-radius:4px;">
+                                <i class="fas fa-image" style="color:#ccc;"></i>
+                            </div>
+                        </div>
+                        <small class="favicon-path-text" style="display:block; margin-top:5px; color:#888; font-size:11px;"></small>
+                    </div>
+                </div>
+
+    </div>
+    </template>
+
+
+    <!-- Client Form Template -->
+    <template id="client-form-template">
+        <div class="form-section-header"><i class="fas fa-id-card"></i>
+            <h3>Client Identity</h3>
+        </div>
+        <div class="form-grid-2">
+            <div class="form-group span-2"><label>Client / Company Name</label><input type="text" name="name" required
+                    placeholder="Full Legal Name"></div>
+            <div class="form-group"><label>GSTIN</label><input type="text" name="gstin" placeholder="GST Number"></div>
+            <div class="form-group"><label>Email ID</label><input type="email" name="email"
+                    placeholder="example@domain.com"></div>
+            <div class="form-group"><label>Mobile Number</label><input type="text" name="mobile"
+                    placeholder="+91 xxxxxxxxxx"></div>
+            <div class="form-group"><label>Landline Number</label><input type="text" name="landline"
+                    placeholder="0xx-xxxxxxx"></div>
+            <div class="form-group"><label>Fax Number</label><input type="text" name="fax" placeholder="Fax Number">
+            </div>
+        </div>
+        <div class="form-section-header mt-4"><i class="fas fa-map-marked-alt"></i>
+            <h3>Billing Address</h3>
+        </div>
+        <div class="form-grid-2">
+            <div class="form-group span-2"><label>Address Line 1</label><input type="text" name="billing_address_line_1"
+                    required placeholder="Street, Building, Flat No."></div>
+            <div class="form-group span-2"><label>Address Line 2 (Optional)</label><input type="text"
+                    name="billing_address_line_2" placeholder="Locality, Landmark"></div>
+            <div class="form-group"><label>Country</label><select name="country" class="profile-country"
+                    style="width:100%;"></select></div>
+            <div class="form-group">
+                <label>State / UT</label>
+                <select name="state_name" class="profile-state" style="width:100%;"></select>
+                <input type="hidden" name="state_code" class="profile-state-code">
+                <input type="hidden" name="place_id" class="profile-place-id">
+            </div>
+            <div class="form-group"><label>City</label><select name="city" class="profile-city"
+                    style="width:100%;"></select></div>
+            <div class="form-group"><label>Pincode</label><input type="text" name="pincode" class="profile-pincode"
+                    placeholder="Postal Code"></div>
+        </div>
+    </template>
+
+    <!-- Shipping Form Template -->
+    <template id="shipping-form-template">
+        <div class="form-section-header"><i class="fas fa-warehouse"></i>
+            <h3>Shipping Details</h3>
+        </div>
+        <div class="form-grid-2">
+            <div class="form-group span-2"><label>Branch / Site Name</label><input type="text" name="branch_name"
+                    placeholder="e.g. Chennai Branch"></div>
+            <div class="form-group"><label>GSTIN (Branch)</label><input type="text" name="gstin"
+                    placeholder="Branch GST (if different)"></div>
+        </div>
+        <div class="form-section-header mt-4"><i class="fas fa-map-marked-alt"></i>
+            <h3>Shipping Address</h3>
+        </div>
+        <div class="form-grid-2">
+            <div class="form-group span-2"><label>Address Line 1</label><input type="text" name="address_line_1"
+                    required placeholder="Street, Building, Flat No."></div>
+            <div class="form-group span-2"><label>Address Line 2 (Optional)</label><input type="text"
+                    name="address_line_2" placeholder="Locality, Landmark"></div>
+            <div class="form-group"><label>Country</label><select name="country" class="profile-country"
+                    style="width:100%;"></select></div>
+            <div class="form-group">
+                <label>State / UT</label>
+                <select name="state_name" class="profile-state" style="width:100%;"></select>
+                <input type="hidden" name="state_code" class="profile-state-code">
+                <input type="hidden" name="place_id" class="profile-place-id">
+            </div>
+            <div class="form-group"><label>City</label><select name="city" class="profile-city"
+                    style="width:100%;"></select></div>
+            <div class="form-group"><label>Pincode</label><input type="text" name="pincode" class="profile-pincode"
+                    placeholder="Postal Code"></div>
+        </div>
+    </template>
+
+    <!-- ===================== INVOICE LIST PAGE ===================== -->
+    <section id="invoice-list-page" class="page">
+        <div class="section-card">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+                <h2 style="margin:0;">Invoice History</h2>
+                <button class="btn btn-primary" onclick="navigateTo('invoice-new')"><i class="fas fa-plus"></i> New
+                    Invoice</button>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="invoice-list-table">
+                    <thead>
+                        <tr>
+                            <th>Invoice No.</th>
+                            <th>Date</th>
+                            <th>Client</th>
+                            <th class="right">Taxable (₹)</th>
+                            <th class="right">Tax (₹)</th>
+                            <th class="right">Grand Total (₹)</th>
+                            <th class="right">Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="invoice-list-body">
+                        <tr>
+                            <td colspan="7" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== NEW INVOICE PAGE ===================== -->
+    <section id="invoice-new-page" class="page">
+        <form id="invoice-form" autocomplete="off">
+
+            <!-- SECTION A+B: Invoice Meta (2-col horizontal) -->
+            <div class="section-card" style="margin-bottom:14px;">
+                <h3 class="section-heading"><i class="fas fa-hashtag"></i> Invoice Details</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;">
+                    <!-- Row 1 -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Invoice No. <span class="required">*</span></label>
+                            <input type="text" id="inv-invoice-no" name="invoice_no" required
+                                placeholder="INV-2026-001">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Invoice Date <span class="required">*</span></label>
+                            <input type="date" id="inv-invoice-date" name="invoice_date" required>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Delivery Note</label>
+                            <input type="text" name="delivery_note" placeholder="optional">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Delivery Note Date</label>
+                            <input type="date" name="delivery_note_date">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Terms of Delivery</label>
+                            <input type="text" name="terms_of_delivery" placeholder="optional">
+                        </div>
+                    </div>
+
+                    <!-- Row 2 -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;margin-bottom:8px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Reference No.</label>
+                            <input type="text" name="reference_no" placeholder="optional">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Other References</label>
+                            <input type="text" name="other_references" placeholder="optional">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Buyer's Order No.</label>
+                            <input type="text" name="buyers_order_no" placeholder="optional">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Order Date</label>
+                            <input type="date" name="order_date">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Dispatch Doc No.</label>
+                            <input type="text" name="dispatch_doc_no" placeholder="optional">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Dispatched Through</label>
+                            <input type="text" name="dispatched_through" placeholder="e.g. DTDC, BlueDart">
+                        </div>
+                    </div>
+
+                    <!-- Row 3 -->
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Mode / Terms of Payment</label>
+                            <input type="text" name="payment_mode_terms" placeholder="e.g. 30 days net">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>e-Way Bill No.</label>
+                            <input type="text" name="eway_bill_no" placeholder="optional">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Destination</label>
+                        <input type="text" name="destination" placeholder="city / state">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION C: Parties (Seller | Buyer | Ship To) -->
+            <div class="section-card" style="margin-bottom:14px;">
+                <h3 class="section-heading"><i class="fas fa-users"></i> Parties</h3>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+                    <!-- Seller -->
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:6px;font-size:12px;">SELLER
+                            (COMPANY)</label>
+                        <select id="inv-company-select" style="width:100%;"></select>
+                        <div id="inv-seller-info" class="party-info-box" style="margin-top:8px;min-height:60px;"></div>
+                    </div>
+                    <!-- Buyer -->
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:6px;font-size:12px;">BUYER (BILL TO)
+                            <span class="required">*</span></label>
+                        <select id="inv-client-select" style="width:100%;" required></select>
+                        <div id="inv-buyer-info" class="party-info-box" style="margin-top:8px;min-height:60px;"></div>
+                    </div>
+                    <!-- Ship To -->
+                    <div>
+                        <label style="font-weight:600;display:block;margin-bottom:6px;font-size:12px;">CONSIGNEE (SHIP
+                            TO)</label>
+                        <select id="inv-shipping-select" style="width:100%;"></select>
+                        <div id="inv-consignee-info" class="party-info-box" style="margin-top:8px;min-height:60px;">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION D: Line Items -->
+            <div class="section-card" style="margin-bottom:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                    <h3 class="section-heading" style="margin:0;"><i class="fas fa-boxes"></i> Line Items</h3>
+                    <button type="button" class="btn btn-secondary" id="btn-add-item" onclick="addInvoiceItem()"
+                        style="padding:6px 14px;font-size:12px;">
+                        <i class="fas fa-plus"></i> Add Item
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table class="data-table" id="invoice-items-table">
+                        <thead>
+                            <tr>
+                                <th width="4%">#</th>
+                                <th width="28%">Description <span class="required">*</span></th>
+                                <th width="9%">HSN/SAC</th>
+                                <th width="8%">Qty <span class="required">*</span></th>
+                                <th width="7%">Unit</th>
+                                <th width="10%">Rate (₹) <span class="required">*</span></th>
+                                <th width="10%">Taxable (₹)</th>
+                                <th width="10%">GST %</th>
+                                <th width="10%">Tax (₹)</th>
+                                <th width="4%"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoice-items-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- SECTION E: Totals Summary -->
+            <div class="section-card" style="margin-bottom:14px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
+                    <div class="summary-box">
+                        <span class="summary-label">Taxable Amount</span>
+                        <span class="summary-value" id="inv-total-taxable">₹ 0.00</span>
+                    </div>
+                    <div class="summary-box">
+                        <span class="summary-label">Total Tax (GST)</span>
+                        <span class="summary-value" id="inv-total-tax">₹ 0.00</span>
+                    </div>
+                    <div class="summary-box highlight-box">
+                        <span class="summary-label">Grand Total</span>
+                        <span class="summary-value" id="inv-grand-total">₹ 0.00</span>
+                    </div>
+                </div>
+                <div id="inv-tax-type-badge" style="margin-bottom:10px;font-size:12px;color:#888;"></div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button type="button" class="btn btn-secondary" onclick="navigateTo('invoice-list')">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-save-invoice">
+                        <i class="fas fa-save"></i> Save Invoice
+                    </button>
+                    <button type="button" class="btn btn-primary" id="btn-save-pdf"
+                        style="background:var(--accent-secondary,#16a34a);" disabled>
+                        <i class="fas fa-file-pdf"></i> Download PDF
+                    </button>
+                </div>
+
+            </div>
+
+        </form>
+    </section>
+
+    <!-- Reports Page -->
+    <section id="reports-page" class="page" style="padding: 20px;">
+        <div class="card p-4 mx-auto mb-4" style="max-width: 1200px; background-color: #fff;">
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <h2 style="margin:0; font-size: 1.25rem; color: var(--primary-color);">
+                    <i class="fas fa-chart-pie"></i> Business Reports
+                </h2>
+                <div style="display:flex; align-items:center; gap: 20px; flex-wrap: wrap;">
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <label style="font-size:0.9rem; font-weight:600; color:#555;">Select Report</label>
+                        <select id="report-type-filter" class="form-control" style="width: 260px;"
+                            onchange="loadSelectedReport()">
+                            <option value="monthly_trend">Monthly Revenue Trend</option>
+                            <option value="top_clients">Top Clients (By Revenue)</option>
+                            <option value="top_products">Most Trendy Products (By Name)</option>
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap: 10px;">
+                        <label style="font-size:0.9rem; font-weight:600; color:#555;">Financial Year</label>
+                        <select id="reports-fy-filter" class="form-control" style="width: 150px;"
+                            onchange="loadSelectedReport()">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <hr style="border:0; border-top:1px solid #eee; margin:20px 0;">
+            <div id="report-container">
+                <p style="text-align:center; color:#888; margin: 40px 0;">Select a report to load data...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Settings Page -->
+    <section id="settings-page" class="page" style="padding: 20px;">
+        <div class="card p-4 mx-auto mb-4" style="max-width: 900px; background-color: #fff;">
+            <div class="box-header mb-4">
+                <h2><i class="fas fa-cog"></i> Settings & Data</h2>
+            </div>
+
+            <div class="form-section-header mt-4">
+                <i class="fas fa-database"></i>
+                <h3>Backup & Restore</h3>
+            </div>
+
+            <div class="form-grid-2" style="align-items: center; margin-top:20px;">
+                <div class="form-group span-2">
+                    <p style="color: #666; margin-bottom: 15px;">Securely download a backup of your entire database, or
+                        upload an existing backup to restore it. <strong>Note: Restoring will overwrite the current
+                            database.</strong></p>
+                </div>
+                <div class="form-group">
+                    <label style="display:block; margin-bottom: 8px;">Download latest backup (ZIP)</label>
+                    <button type="button" id="btn-backup-db" class="btn btn-primary" onclick="downloadBackup()">
+                        <i class="fas fa-download"></i> Download Backup
+                    </button>
+                </div>
+                <div class="form-group">
+                    <label style="display:block; margin-bottom: 8px;">Upload Backup File (.zip)</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" id="restore-file-input" accept=".zip" style="display: none;"
+                            onchange="handleRestoreSelection(event)">
+                        <button type="button" class="btn btn-secondary"
+                            onclick="document.getElementById('restore-file-input').click()">
+                            <i class="fas fa-folder-open"></i> Select File
+                        </button>
+                        <button type="button" id="btn-restore-db" class="btn btn-danger" onclick="uploadRestore()"
+                            disabled>
+                            <i class="fas fa-upload"></i> Restore
+                        </button>
+                    </div>
+                    <small id="restore-file-name" style="display:block; margin-top: 5px; color:#888;"></small>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    </main>
+    </div>
+
+
+
+
+    <!-- Message Dialog Modal (The new "OK" dialog) -->
+    <div id="message-modal" class="modal" style="z-index: 10001;">
+        <div class="modal-content card" style="max-width: 400px; text-align: center; padding: 30px;">
+            <div id="message-icon" style="font-size: 3rem; margin-bottom: 20px;">
+                <i class="fas fa-check-circle" style="color: #10b981;"></i>
+            </div>
+            <h3 id="message-title" style="margin-bottom: 15px; font-weight: 700;">Notification</h3>
+            <p id="message-text" style="color: var(--text-dim); margin-bottom: 25px; line-height: 1.5;"></p>
+            <button class="btn btn-primary" style="width: 100%; justify-content: center;" onclick="closeMessageModal()">OK</button>
+        </div>
+    </div>
+
+    <!-- Record Payment Modal -->
+    <div id="payment-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div class="card p-4" style="width:100%; max-width:400px; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="fas fa-coins"></i> Record Payment</h3>
+                <button class="btn btn-link" style="color:#888;" onclick="closePaymentModal()"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <form id="payment-form" onsubmit="submitPayment(event)">
+                <input type="hidden" id="payment-invoice-id">
+                <div class="form-group mb-3">
+                    <label>Amount Received (₹)</label>
+                    <input type="number" step="0.01" id="payment-amount" required class="form-control">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Payment Date</label>
+                    <input type="date" id="payment-date" required class="form-control">
+                </div>
+                <div class="form-group mb-3">
+                    <label>Payment Method</label>
+                    <select id="payment-method" required class="form-control">
+                        <option value="Cash">Cash</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Online">Online / Bank Transfer</option>
+                    </select>
+                </div>
+                <div class="form-group mb-4">
+                    <label>Notes (Optional)</label>
+                    <textarea id="payment-notes" class="form-control" rows="2"
+                        placeholder="e.g. Transaction ID / Cheque No."></textarea>
+                </div>
+                <div style="text-align:right;">
+                    <button type="button" class="btn btn-secondary" onclick="closePaymentModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-payment">Save Receipt</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js?v=6"></script>
+</body>
+
+</html>

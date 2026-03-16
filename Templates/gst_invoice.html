@@ -1,0 +1,627 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tax Invoice - {{ invoice.invoice_no }}</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px 30px;
+            background-color: white;
+            color: black;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 11px;
+            line-height: 1.3;
+            box-sizing: border-box;
+            width: 210mm;
+            min-height: 297mm;
+        }
+
+        .invoice-wrapper {
+            max-width: 100%;
+        }
+
+        /* Header Layout */
+        header {
+            text-align: right;
+            margin-bottom: 5px;
+        }
+
+        .document-title h2 {
+            font-size: 16px;
+            margin: 0;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Meta Blocks & Borders */
+        .border-bottom {
+            border-bottom: 1px solid black;
+        }
+
+        .border-right {
+            border-right: 1px solid black;
+        }
+
+        .border-top {
+            border-top: 1px solid black;
+        }
+
+        /* Top Grid */
+        .top-meta {
+            display: grid;
+            grid-template-columns: 50% 50%;
+            border: 1.5px solid black;
+            border-bottom: none;
+            border-top: 3px solid black;
+        }
+
+        .top-meta>div {
+            padding: 4px;
+        }
+
+        .company-details {
+            border-right: 1px solid black;
+            padding-right: 5px;
+        }
+
+        .company-details h1 {
+            font-size: 18px;
+            margin: 0 0 5px 0;
+            font-weight: normal;
+        }
+
+        .meta-text {
+            margin: 0;
+            font-size: 11px;
+            padding: 1px 0;
+        }
+
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid black;
+        }
+
+        .grid-2col:last-child {
+            border-bottom: none;
+        }
+
+        .grid-2col>div {
+            padding: 2px 4px;
+        }
+
+        .grid-2col>div:first-child {
+            border-right: 1px solid black;
+            height: 100%;
+        }
+
+        .meta-label {
+            display: block;
+            font-size: 11px;
+            margin-bottom: 1px;
+            text-transform: uppercase;
+        }
+
+        .meta-value {
+            font-size: 11px;
+            margin: 0;
+            font-weight: bold;
+        }
+
+        /* Middle Meta Grid (Addresses & Dispatch) */
+        .mid-meta {
+            display: grid;
+            grid-template-columns: 50% 50%;
+            border: 1.5px solid black;
+            border-bottom: none;
+        }
+
+        .mid-meta-col {
+            border-right: 1px solid black;
+        }
+
+        .mid-meta-col:last-child {
+            border-right: none;
+        }
+
+        .box-section {
+            padding: 4px;
+            border-bottom: 1px solid black;
+            height: auto;
+        }
+
+        .box-section:last-child {
+            border-bottom: none;
+            min-height: 40px;
+        }
+
+        /* Items Table */
+        table.items-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid black;
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        table.items-table th,
+        table.items-table td {
+            border-right: 1px solid black;
+            padding: 4px;
+            font-size: 10px;
+            vertical-align: top;
+        }
+
+        table.items-table th:last-child,
+        table.items-table td:last-child {
+            border-right: none;
+        }
+
+        table.items-table th {
+            border-bottom: 1px solid black;
+            text-align: left;
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+
+        .right {
+            text-align: right !important;
+        }
+
+        .center {
+            text-align: center !important;
+        }
+
+        .items-table .total-row td {
+            border-top: 1px solid black;
+            border-bottom: 1px solid black;
+            font-weight: bold;
+        }
+
+        .item-subtext {
+            font-size: 9px;
+            display: block;
+            margin-top: 1px;
+            text-align: right;
+            font-style: italic;
+        }
+
+        /* Words & Totals Area */
+        .amounts-in-words {
+            font-size: 9px;
+            margin: 5px 0;
+        }
+
+        .amounts-in-words span {
+            text-transform: uppercase;
+        }
+
+        .amounts-in-words p {
+            margin: 2px 0 5px 0;
+            font-style: italic;
+            font-weight: bold;
+        }
+
+        /* Tax Summary Table */
+        table.tax-table {
+            width: 100%;
+            border-collapse: collapse;
+            border: 1.5px solid black;
+            border-top: 1.5px solid black;
+            margin-bottom: 0;
+        }
+
+        table.tax-table th,
+        table.tax-table td {
+            border: 1px solid black;
+            padding: 4px;
+            font-size: 9px;
+        }
+
+        table.tax-table th {
+            text-align: center;
+            font-weight: normal;
+            text-transform: uppercase;
+        }
+
+        /* Footer Info */
+        .footer-info {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            border: 1.5px solid black;
+            border-top: none;
+        }
+
+        .footer-left {
+            padding: 4px;
+            border-right: 1px solid black;
+        }
+
+        .footer-right {
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: right;
+            text-align: right;
+        }
+
+        .bank-details {
+            margin-top: 0;
+            margin-bottom: 4px;
+            line-height: 1.1;
+        }
+
+        .bank-details p {
+            margin: 1px 0;
+            display: grid;
+            grid-template-columns: 120px 1fr;
+        }
+
+        .declaration {
+            margin-top: 5px;
+            font-size: 9px;
+        }
+
+        .declaration p {
+            margin: 2px 0;
+            line-height: 1.1;
+        }
+
+        .signature-name {
+            font-weight: bold;
+            font-size: 10px;
+            text-align: right;
+            margin-bottom: 30px;
+        }
+
+        .auth-sig {
+            text-align: right;
+            font-size: 9px;
+            margin-top: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="invoice-wrapper">
+        <header>
+            <div class="document-title">
+                <h2>Tax Invoice</h2>
+            </div>
+        </header>
+
+        <!-- TOP META: Company + Invoice Info (full-width separator rows) -->
+        <table
+            style="width:100%;border-collapse:collapse;border:1.5px solid black;border-top:3px solid black;border-bottom:none;table-layout:fixed;">
+            <colgroup>
+                <col style="width:50%;">
+                <col style="width:25%;">
+                <col style="width:25%;">
+            </colgroup>
+            <tbody>
+                <!-- Row 1: Company name + Invoice No + e-Way -->
+                <tr>
+                    <td rowspan="3" style="padding:6px;border-right:1px solid black;vertical-align:top;">
+                        <h1 style="font-size:20px;margin:0 0 5px 0;font-weight:bold;">{{ company.name }}</h1>
+                        <p class="meta-text">{{ company.address_line_1 }},</p>
+                        {% if company.address_line_2 %}<p class="meta-text">{{ company.address_line_2 }},</p>{% endif %}
+                        <p class="meta-text">{{ company.city }}{% if company.pincode %} - {{ company.pincode }}{% endif
+                            %}</p>
+                        <p class="meta-text" style="font-weight:bold;margin-top:4px;">GSTIN/UIN: {{ company.gstin }}</p>
+                        <p class="meta-text"><b>State Name:</b> {{ company.state_name }}, <b>State Code:</b> {{
+                            company.state_code }}</p>
+                        <p class="meta-text"><b>E-Mail:</b> {{ company.email }}</p>
+                    </td>
+                    <td style="padding:3px 5px;border-right:1px solid black;border-bottom:1px solid black;">
+                        <span class="meta-label">Invoice No.</span>
+                        <div class="meta-value">{{ invoice.invoice_no }}</div>
+                    </td>
+                    <td style="padding:3px 5px;border-bottom:1px solid black;">
+                        <span class="meta-label">e-Way Bill No.</span>
+                        <div class="meta-value">{{ invoice.eway_bill_no or '-' }}</div>
+                    </td>
+                </tr>
+                <!-- Row 2: Date + Mode of Payment -->
+                <tr>
+                    <td style="padding:3px 5px;border-right:1px solid black;border-bottom:1px solid black;">
+                        <span class="meta-label">Dated</span>
+                        <div class="meta-value">{{ invoice.invoice_date }}</div>
+                    </td>
+                    <td style="padding:3px 5px;border-bottom:1px solid black;">
+                        <span class="meta-label">Mode/Terms of Payment</span>
+                        <div class="meta-value">{{ invoice.payment_mode_terms or '-' }}</div>
+                    </td>
+                </tr>
+                <!-- Row 3: Reference No + Other References -->
+                <tr>
+                    <td style="padding:3px 5px;border-right:1px solid black;">
+                        <span class="meta-label">Reference No. &amp; Date.</span>
+                        <div class="meta-value">{{ invoice.reference_no or '-' }}</div>
+                    </td>
+                    <td style="padding:3px 5px;">
+                        <span class="meta-label">Other References</span>
+                        <div class="meta-value">{{ invoice.other_references or '-' }}</div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="mid-meta">
+            <div class="mid-meta-col">
+                <div class="box-section">
+                    <span class="meta-label">Consignee (Ship to)</span>
+                    <p class="meta-value" style="font-size: 14px;">{{ consignee.name }}</p>
+                    <p class="meta-text">{{ consignee.address_line_1 }}</p>
+                    {% if consignee.address_line_2 %}<p class="meta-text">{{ consignee.address_line_2 }}</p>{% endif %}
+                    <p class="meta-text">{{ consignee.city }}{% if consignee.pincode %} - {{ consignee.pincode }}{%
+                        endif %}</p>
+                    <p class="meta-text" style="font-weight: bold; margin-top: 4px;">GSTIN/UIN: {{ consignee.gstin }}
+                    </p>
+                    <p class="meta-text"><b>State Name:</b> {{ consignee.state_name }}, <b>State Code:</b> {{
+                        consignee.state_code }}</p>
+                </div>
+                <div class="box-section" style="border-bottom: none;">
+                    <span class="meta-label">Buyer (Bill to)</span>
+                    <p class="meta-value" style="font-size: 14px;">{{ buyer.name }}</p>
+                    <p class="meta-text">{{ buyer.address_line_1 }}</p>
+                    {% if buyer.address_line_2 %}<p class="meta-text">{{ buyer.address_line_2 }}</p>{% endif %}
+                    <p class="meta-text">{{ buyer.city }}{% if buyer.pincode %} - {{ buyer.pincode }}{% endif %}</p>
+                    <p class="meta-text" style="font-weight: bold; margin-top: 4px;">GSTIN/UIN: {{ buyer.gstin }}</p>
+                    <p class="meta-text"><b>State Name:</b> {{ buyer.state_name }}, <b>State Code:</b> {{
+                        buyer.state_code }}
+                    </p>
+                </div>
+            </div>
+            <div class="mid-meta-col" style="display: grid; grid-template-columns: 1fr 1fr; padding: 0;">
+                <div style="border-right: 1px solid black;">
+                    <div class="box-section">
+                        <span class="meta-label">Buyer's Order No.</span>
+                        <div class="meta-value">{{ invoice.buyers_order_no or '-' }}</div>
+                    </div>
+                    <div class="box-section">
+                        <span class="meta-label">Dispatch Doc No.</span>
+                        <div class="meta-value">{{ invoice.dispatch_doc_no or '-' }}</div>
+                    </div>
+                    <div class="box-section">
+                        <span class="meta-label">Dispatched through</span>
+                        <div class="meta-value">{{ invoice.dispatched_through or '-' }}</div>
+                    </div>
+                    <div class="box-section" style="border-bottom: none;">
+                        <span class="meta-label">Terms of Delivery</span>
+                        <div class="meta-value">{{ invoice.terms_of_delivery or '-' }}</div>
+                    </div>
+                </div>
+                <div>
+                    <div class="box-section">
+                        <span class="meta-label">Dated</span>
+                        <div class="meta-value">{{ invoice.order_date or '-' }}</div>
+                    </div>
+                    <div class="box-section">
+                        <span class="meta-label">Delivery Note Date</span>
+                        <div class="meta-value">{{ invoice.delivery_note_date or '-' }}</div>
+                    </div>
+                    <div class="box-section" style="border-bottom: none;">
+                        <span class="meta-label">Destination</span>
+                        <div class="meta-value">{{ invoice.destination or '-' }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th width="5%" class="center">Sl No.</th>
+                    <th width="35%">Description of Goods</th>
+                    <th width="10%" class="center">HSN/SAC</th>
+                    <th class="right" width="10%">Quantity</th>
+                    <th class="right" width="15%">Rate (&#8377;)</th>
+                    <th class="center" width="5%">Per</th>
+                    <th class="right" width="20%">Amount (&#8377;)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr>
+                    <td class="center">{{ loop.index }}</td>
+                    <td>
+                        <b>{{ item.description }}</b>
+                    </td>
+                    <td class="center">{{ item.hsn_sac }}</td>
+                    <td class="right">{{ item.quantity | in_format }}</td>
+                    <td class="right">
+                        &#8377; {{ item.rate | in_format }}
+                    </td>
+                    <td class="center">{{ item.unit }}</td>
+                    <td class="right">
+                        &#8377; {{ item.taxable_value | in_format }}
+                    </td>
+                </tr>
+                {% endfor %}
+                {# Grid of empty rows containing detached tax labels (pushed to Row 5/6 as requested) #}
+                {% for row in empty_rows_data %}
+                <tr style="height: 20px;">
+                    <td>&nbsp;</td>
+                    <td>
+                        {% if row.is_tax_label %}
+                        <span class="item-subtext right"
+                            style="display: block; width: 100%; font-style: normal; font-weight: bold;">{{
+                            row.description }}</span>
+                        {% else %}
+                        &nbsp;
+                        {% endif %}
+                    </td>
+                    <td>&nbsp;</td>
+                    <td>&nbsp;</td>
+                    <td class="right">
+                        {% if row.is_tax_label %}
+                        <span class="item-subtext right" style="font-style: normal; font-weight: bold;">{{ row.tax_rate
+                            }}</span>
+                        {% else %}
+                        &nbsp;
+                        {% endif %}
+                    </td>
+                    <td class="center">
+                        {% if row.is_tax_label %}
+                        <span class="item-subtext center"
+                            style="display: block; width: 100%; font-style: normal; font-weight: bold;">{{
+                            row.tax_percent_symbol }}</span>
+                        {% else %}
+                        &nbsp;
+                        {% endif %}
+                    </td>
+                    <td class="right">
+                        {% if row.is_tax_label %}
+                        <span class="item-subtext right" style="font-style: normal; font-weight: bold;">&#8377; {{
+                            row.amount
+                            }}</span>
+                        {% else %}
+                        &nbsp;
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+                <tr class="total-row">
+                    <td></td>
+                    <td class="right">Total</td>
+                    <td></td>
+                    <td class="right">{{ totals.total_quantity.split(' ')[0] }}</td>
+                    <td></td>
+                    <td class="center">{{ totals.total_quantity.split(' ')[1] if ' ' in totals.total_quantity else '' }}
+                    </td>
+                    <td class="right">&#8377; {{ totals.grand_total | in_format }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="amounts-in-words-table"
+            style="width: 100%; border-collapse: collapse; border-left: 1.5px solid black; border-right: 1.5px solid black; margin: 0;">
+            <tr>
+                <td style="padding: 4px 6px; border: none; font-size: 10px;">
+                    <span class="meta-label">Amount Chargeable (in words) :</span>
+                    <span id="grand-total-words"
+                        style="font-weight: normal; font-style: italic; text-transform: capitalize;">{{
+                        grand_total_words }}</span>
+                    <span
+                        style="float: right; font-style: italic; font-weight: normal; font-size: 9px; margin-top: 1px;">E.
+                        & O.E</span>
+                </td>
+            </tr>
+        </table>
+
+        <table class="tax-table">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="center">HSN/SAC</th>
+                    <th rowspan="2" class="right">Taxable Value</th>
+                    {% if is_igst %}
+                    <th colspan="2" class="center">Integrated Tax</th>
+                    {% else %}
+                    <th colspan="2" class="center">Central Tax</th>
+                    <th colspan="2" class="center">State Tax</th>
+                    {% endif %}
+                    <th rowspan="2" class="right">Total Tax Amount</th>
+                </tr>
+                <tr>
+                    {% if is_igst %}
+                    <th class="right">Rate</th>
+                    <th class="right">Amount</th>
+                    {% else %}
+                    <th class="right">Rate</th>
+                    <th class="right">Amount</th>
+                    <th class="right">Rate</th>
+                    <th class="right">Amount</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for tax in tax_summary %}
+                <tr>
+                    <td class="center">{{ tax.hsn_sac }}</td>
+                    <td class="right">&#8377; {{ tax.taxable_value | in_format }}</td>
+                    {% if is_igst %}
+                    <td class="right">{{ tax.igst_rate }}%</td>
+                    <td class="right">&#8377; {{ tax.igst_amount | in_format }}</td>
+                    {% else %}
+                    <td class="right">{{ tax.cgst_rate }}%</td>
+                    <td class="right">&#8377; {{ tax.cgst_amount | in_format }}</td>
+                    <td class="right">{{ tax.sgst_rate }}%</td>
+                    <td class="right">&#8377; {{ tax.sgst_amount | in_format }}</td>
+                    {% endif %}
+                    <td class="right">&#8377; {{ tax.total_tax_amount | in_format }}</td>
+                </tr>
+                {% endfor %}
+                <tr style="font-weight: bold;">
+                    <td class="right">Total</td>
+                    <td class="right">&#8377; {{ totals.taxable_value | in_format }}</td>
+                    {% if is_igst %}
+                    <td></td>
+                    <td class="right">&#8377; {{ totals.igst_amount | in_format }}</td>
+                    {% else %}
+                    <td></td>
+                    <td class="right">&#8377; {{ totals.cgst_amount | in_format }}</td>
+                    <td></td>
+                    <td class="right">&#8377; {{ totals.sgst_amount | in_format }}</td>
+                    {% endif %}
+                    <td class="right">&#8377; {{ totals.total_tax_amount | in_format }}</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <table class="amounts-in-words-table"
+            style="width: 100%; border-collapse: collapse; border-left: 1.5px solid black; border-right: 1.5px solid black; border-top: none; border-bottom: 1px solid black; margin: 0;">
+            <tr>
+                <td style="padding: 4px 6px; border: none; font-size: 10px;">
+                    <span class="meta-label">Tax Amount (in words) :</span>
+                    <span id="tax-amount-words"
+                        style="font-weight: bold; font-style: italic; text-transform: capitalize;">{{ tax_amount_words
+                        }}</span>
+                </td>
+            </tr>
+        </table>
+
+        <div class="footer-info">
+            <div class="footer-left">
+                <div class="bank-details">
+                    <span style="font-size: 9px; text-decoration: underline;">Company's Bank Details</span>
+                    <p><span class="meta-text">Bank Name</span><span class="meta-text">: <b>{{ company.bank_name
+                                }}</b></span></p>
+                    <p><span class="meta-text">A/c No.</span><span class="meta-text">: <b>{{ company.bank_account_no
+                                }}</b></span></p>
+                    <p><span class="meta-text">Branch & IFS Code</span><span class="meta-text">: <b>{{
+                                company.bank_branch_ifsc }}</b></span></p>
+                </div>
+                <div style="display: flex; margin-bottom: 5px; margin-top: 5px;">
+                    <span style="width: 120px; font-size: 9px;">Company's PAN</span>
+                    <span style="font-size: 9px;">: <b>{{ company.pan_number }}</b></span>
+                </div>
+                <div class="declaration">
+                    <p style="text-decoration: underline;">Declaration</p>
+                    <p>{{ company.declaration_text }}</p>
+                </div>
+            </div>
+
+            <div class="footer-right">
+                <div class="signature-name">for {{ company.name }}</div>
+                <div class="auth-sig">Authorised Signatory</div>
+            </div>
+        </div>
+
+        <div style="text-align: center; font-size: 8px; margin-top: 4px;">
+            {{ company.jurisdiction_text|default('SUBJECT TO HYDERABAD JURISDICTION') }} | This is a Computer Generated
+            Invoice
+        </div>
+
+    </div>
+</body>
+
+</html>
