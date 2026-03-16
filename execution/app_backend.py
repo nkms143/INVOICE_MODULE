@@ -428,6 +428,69 @@ def delete_shipping(ship_id: str):
     conn.close()
     return {"status": "success", "id": ship_id}
 
+# ---- Items Master Endpoints ----
+
+@app.get("/api/items")
+def get_items():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items_master ORDER BY description ASC")
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return rows
+
+@app.get("/api/items/{item_id}")
+def get_item_by_id(item_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM items_master WHERE id=?", (item_id,))
+    row = cursor.fetchone()
+    conn.close()
+    if row:
+        return dict(row)
+    raise HTTPException(status_code=404, detail="Item not found")
+
+@app.post("/api/items")
+def add_item_master(item: ItemMaster):
+    conn = get_db()
+    cursor = conn.cursor()
+    item_id = item.id or str(uuid.uuid4())
+    cursor.execute('''
+        INSERT INTO items_master (id, description, hsn_sac, default_unit, gst_rate)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (item_id, item.description, item.hsn_sac, item.default_unit, item.gst_rate))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": item_id}
+
+@app.put("/api/items/{item_id}")
+def update_item_master(item_id: str, item: ItemMaster):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM items_master WHERE id=?", (item_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Item not found")
+    cursor.execute('''
+        UPDATE items_master SET description=?, hsn_sac=?, default_unit=?, gst_rate=? WHERE id=?
+    ''', (item.description, item.hsn_sac, item.default_unit, item.gst_rate, item_id))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": item_id}
+
+@app.delete("/api/items/{item_id}")
+def delete_item_master(item_id: str):
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM items_master WHERE id=?", (item_id,))
+    if not cursor.fetchone():
+        conn.close()
+        raise HTTPException(status_code=404, detail="Item not found")
+    cursor.execute("DELETE FROM items_master WHERE id=?", (item_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "id": item_id}
+
 # ---- Invoice Endpoints ----
 
 @app.get("/api/invoices/next-number")
@@ -539,13 +602,28 @@ async def create_invoice(inv: InvoiceCreate):
             inv.other_references, inv.order_date
         ))
         for item in inv.items:
+            # Auto-save item to Item Master if it doesn't exist (matched by description)
+            cursor.execute("SELECT id FROM items_master WHERE description = ?", (item.description,))
+            existing_item = cursor.fetchone()
+            item_id = item.item_id
+            
+            if not existing_item:
+                item_id = str(uuid.uuid4())
+                cursor.execute('''
+                    INSERT INTO items_master (id, description, hsn_sac, default_unit, gst_rate)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (item_id, item.description, item.hsn_sac, item.unit, 
+                      (item.cgst_rate + item.sgst_rate + item.igst_rate)))
+            else:
+                item_id = existing_item['id']
+
             cursor.execute('''
                 INSERT INTO invoice_items (
-                    id, invoice_id, description, hsn_sac, quantity, unit, rate,
+                    id, invoice_id, item_id, description, hsn_sac, quantity, unit, rate,
                     taxable_value, cgst_rate, sgst_rate, igst_rate, tax_amount, total_amount
-                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ''', (
-                str(uuid.uuid4()), inv_id,
+                str(uuid.uuid4()), inv_id, item_id,
                 item.description, item.hsn_sac, item.quantity, item.unit, item.rate,
                 item.taxable_value, item.cgst_rate, item.sgst_rate, item.igst_rate,
                 item.tax_amount, item.total_amount
@@ -599,6 +677,30 @@ def create_receipt(inv_id: str, receipt: ReceiptCreate):
     finally:
         conn.close()
 
+@app.get("/api/payments/report")
+def get_payments_report():
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute('''
+        SELECT 
+            i.invoice_no, i.invoice_date, i.grand_total,
+            c.name as client_name,
+            COALESCE(SUM(r.amount), 0) as amount_paid
+        FROM invoices i
+        LEFT JOIN clients c ON i.client_id = c.id
+        LEFT JOIN receipts r ON i.id = r.invoice_id
+        GROUP BY i.id
+        ORDER BY i.invoice_date DESC, i.created_at DESC
+    ''')
+    rows = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    
+    # Add Amount Due
+    for row in rows:
+        row['amount_due'] = row['grand_total'] - row['amount_paid']
+        
+    return rows
+
 def get_financial_year(date_str: str) -> str:
     """Calculates Indian Financial Year (April 1 to March 31) from a YYYY-MM-DD string."""
     try:
@@ -636,10 +738,12 @@ def get_dashboard_summary():
     
     for row in invoices:
         date_val = row['invoice_date']
-        if not date_val:
+        if not date_val: continue
+        
+        try:
+            fy = get_financial_year(date_val)
+        except:
             continue
-            
-        fy = get_financial_year(date_val)
         
         if fy not in summary_by_fy:
             summary_by_fy[fy] = {
@@ -691,7 +795,7 @@ def get_dashboard_charts(fy: Optional[str] = None):
     filtered_items = [itm for itm in all_items if get_financial_year(itm['invoice_date']) == fy]
     
     # Aggregate Monthly Trend
-    monthly_trend = {f"{m:02d}": 0 for m in range(1, 13)}  # '01' to '12'
+    monthly_trend = {f"{m:02d}": 0.0 for m in range(1, 13)}  # '01' to '12'
     client_totals = {}
     
     for inv in filtered_invoices:
@@ -706,20 +810,19 @@ def get_dashboard_charts(fy: Optional[str] = None):
                     monthly_trend[month] = float(monthly_trend[month]) + float(inv['grand_total'] or 0)
         
         cname = inv['client_name'] or 'Unknown'
-        client_totals[cname] = float(client_totals.get(cname, 0)) + float(inv['grand_total'] or 0)
+        client_totals[cname] = float(client_totals.get(cname, 0.0)) + float(inv['grand_total'] or 0.0)
         
-    # Aggregate Products
     product_totals = {}
     for itm in filtered_items:
         pname = itm['product_name'] or 'Unknown'
-        product_totals[pname] = product_totals.get(pname, 0) + itm['total_amount']
+        product_totals[pname] = float(product_totals.get(pname, 0.0)) + float(itm['total_amount'] or 0.0)
         
     # Sort Top Clients & Top Products
-    sorted_clients = sorted([{"name": k, "value": v} for k, v in client_totals.items()], key=lambda x: x['value'], reverse=True)
-    top_clients = sorted_clients[0:10]
+    sorted_clients = sorted([{"name": str(k), "value": float(v)} for k, v in client_totals.items()], key=lambda x: x['value'], reverse=True)
+    top_clients = [sorted_clients[i] for i in range(min(10, len(sorted_clients)))]
     
-    sorted_products = sorted([{"name": k, "value": v} for k, v in product_totals.items()], key=lambda x: x['value'], reverse=True)
-    top_products = sorted_products[0:10]
+    sorted_products = sorted([{"name": str(k), "value": float(v)} for k, v in product_totals.items()], key=lambda x: x['value'], reverse=True)
+    top_products = [sorted_products[i] for i in range(min(10, len(sorted_products)))]
     
     # Remap months to Fiscal Year order (Apr..Mar)
     months_order = ['04', '05', '06', '07', '08', '09', '10', '11', '12', '01', '02', '03']

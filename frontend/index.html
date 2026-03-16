@@ -62,6 +62,14 @@
                         <li data-page="invoice-list"><a href="#"><i class="fas fa-list"></i> Invoice List</a></li>
                     </ul>
                 </li>
+                <!-- Payments Module -->
+                <li id="nav-payments-group">
+                    <a href="#" class="nav-link" data-page="payments-list"><i class="fas fa-money-check-alt"></i> Payments History</a>
+                </li>
+                <!-- Item Master Module -->
+                <li id="nav-items-group">
+                    <a href="#" class="nav-link" data-page="items-list"><i class="fas fa-boxes"></i> Product Catalog</a>
+                </li>
 
                 <!-- Reports Module -->
                 <li id="nav-reports-group">
@@ -607,6 +615,73 @@
                     <tbody id="invoice-list-body">
                         <tr>
                             <td colspan="7" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== PAYMENTS HISTORY PAGE ===================== -->
+    <section id="payments-list-page" class="page">
+        <div class="table-card">
+            <div class="report-header">
+                <div>
+                    <h3 class="section-heading"><i class="fas fa-money-check-alt"></i> Payments Report</h3>
+                    <p class="section-subheading">Status of all invoices, payments received, and pending balances.</p>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="payments-list-table">
+                    <thead>
+                        <tr>
+                            <th>Sl No.</th>
+                            <th>Invoice No.</th>
+                            <th>Invoice Dt</th>
+                            <th>Client Name</th>
+                            <th class="right">Grand Total</th>
+                            <th class="right">Amount Paid</th>
+                            <th class="right">Amount Due</th>
+                        </tr>
+                    </thead>
+                    <tbody id="payments-history-body">
+                        <tr>
+                            <td colspan="7" style="text-align:center;">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- ===================== PRODUCT CATALOG PAGE ===================== -->
+    <section id="items-list-page" class="page">
+        <div class="table-card">
+            <div class="report-header">
+                <div>
+                    <h3 class="section-heading"><i class="fas fa-boxes"></i> Item Master Catalog</h3>
+                    <p class="section-subheading">View and manage your saved products and services.</p>
+                </div>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="showToast('Add functionality coming soon', 'info')">
+                        <i class="fas fa-plus"></i> ADD NEW ITEM
+                    </button>
+                </div>
+            </div>
+            <div class="table-wrapper">
+                <table class="data-table" id="items-master-table">
+                    <thead>
+                        <tr>
+                            <th>Description</th>
+                            <th>HSN/SAC</th>
+                            <th>Unit</th>
+                            <th class="right">GST %</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="items-master-body">
+                        <tr>
+                            <td colspan="5" style="text-align:center;">Loading...</td>
                         </tr>
                     </tbody>
                 </table>

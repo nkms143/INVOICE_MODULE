@@ -1,14 +1,15 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // --- State ---
-    const state = {
-        currentPage: 'dashboard',
-        companies: [],
-        clients: [],
-        currentShippingAddresses: [],
-        taxMode: 'CGST+SGST'
-    };
+// --- Globals ---
+const API_BASE = '/api';
+const state = {
+    currentPage: 'dashboard',
+    companies: [],
+    clients: [],
+    currentShippingAddresses: [],
+    taxMode: 'CGST+SGST'
+};
 
-    const API_BASE = '/api';
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Selectors ---
 
     // --- Address Automation Constants ---
     const gstStateCodes = [
@@ -103,7 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
             'profile-add': ['Add Company', 'Create a new business profile.'],
             'profile-update': ['Update Company', 'Modify existing business details.'],
             'reports': ['Reports & Analytics', 'Filter by Financial Year to view reports.'],
-            'settings': ['Settings & Data', 'Manage your database and backups.']
+            'settings': ['Settings & Data', 'Manage your database and backups.'],
+            'payments-list': ['Payments History', 'View transaction status and pending dues.'],
+            'items-list': ['Product Catalog', 'Manage your items and services master.']
         };
         const [t, s] = titleMap[pageId] || ['', ''];
         document.getElementById('page-title').innerText = t;
@@ -123,6 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (pageId === 'shipping-list') loadShippingList();
         if (pageId === 'shipping-add') openAddShipping();
         if (pageId === 'shipping-update') openUpdateShipping();
+        if (pageId === 'payments-list') loadPaymentsList();
+        if (pageId === 'items-list') loadItemsList();
     }
 
     // Load business identity in sidebar and set favicon
@@ -177,18 +182,18 @@ document.addEventListener('DOMContentLoaded', () => {
         const formData = new FormData();
         formData.append('file', file);
         try {
-            console.log(`Uploading favicon for ${profileId}...`);
+            //console.log(`Uploading favicon for ${profileId}...`);
             const res = await fetch(`${API_BASE}/profiles/${profileId}/favicon`, {
                 method: 'POST',
                 body: formData
             });
             if (res.ok) {
                 const result = await res.json();
-                console.log("Favicon uploaded successfully:", result.favicon_url);
-                
+                //console.log("Favicon uploaded successfully:", result.favicon_url);
+
                 // Update hidden field
                 $(form).find('.favicon-url-hidden').val(result.favicon_url);
-                
+
                 const isDefault = $(form).find('[name="is_default"]').prop('checked') || state.companies.length <= 1;
                 if (isDefault) updateFavicon(result.favicon_url);
             } else {
@@ -210,12 +215,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle all page links
     document.querySelectorAll('[data-page]').forEach(l => {
-        if (!l.classList.contains('nav-link') || !l.parentElement.classList.contains('has-submenu')) {
-            l.addEventListener('click', (e) => {
-                e.preventDefault();
-                navigateTo(l.dataset.page);
-            });
-        }
+        l.addEventListener('click', (e) => {
+            // Find the closest parent with data-page in case an icon was clicked
+            const target = e.target.closest('[data-page]');
+            if (!target) return;
+
+            // Prevent interference with submenu toggles
+            if (target.parentElement.classList.contains('has-submenu') && target.tagName === 'A' && target.nextElementSibling && target.nextElementSibling.classList.contains('submenu')) {
+                 // let the submenu toggle handle it
+                 return;
+            }
+
+            e.preventDefault();
+            const pageId = target.dataset.page;
+            if (pageId) navigateTo(pageId);
+        });
     });
 
     document.getElementById('btn-create-invoice').addEventListener('click', () => navigateTo('invoice-entry'));
@@ -237,7 +251,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         text.innerText = msg;
-        
+
         // Customize based on type
         if (iconDiv && title) {
             if (type === 'error') {
@@ -256,7 +270,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     window.showToast = showToast;
 
-    window.closeMessageModal = function() {
+    window.closeMessageModal = function () {
         document.getElementById('message-modal').classList.remove('active');
         if (typeof toastCallback === 'function') {
             const cb = toastCallback;
@@ -272,7 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const citySelect = $(`#${formId} .profile-city`);
         const pincodeInput = $(`#${formId} .profile-pincode`);
         const stateCodeInput = $(`#${formId} .profile-state-code`);
-        const statusMsg = $(`#${formId}`).find('.status-msg').length ? $(`#${formId}`).find('.status-msg') : { text: function() {} };
+        const statusMsg = $(`#${formId}`).find('.status-msg').length ? $(`#${formId}`).find('.status-msg') : { text: function () { } };
 
         countrySelect.select2({ data: countries, placeholder: "Select Country", allowClear: true });
         stateSelect.select2({ placeholder: "Select State", allowClear: true });
@@ -389,17 +403,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (container.innerHTML.trim() === '') {
             container.innerHTML = document.getElementById('profile-form-template').innerHTML;
             initAddressAutomation(container.closest('form').getAttribute('id'));
-            
+
             // Preview logic for favicon
             const form = container.closest('form');
             const fileInput = form.querySelector('.profile-favicon-input');
             const preview = form.querySelector('.favicon-preview img') || form.querySelector('.favicon-preview');
-            
-            fileInput.addEventListener('change', function() {
+
+            fileInput.addEventListener('change', function () {
                 const file = this.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
+                    reader.onload = function (e) {
                         if (preview.tagName === 'IMG') {
                             preview.src = e.target.result;
                         } else {
@@ -462,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }, 500);
                 }
-                
+
                 // Populate hidden favicon URL
                 $(form).find('.favicon-url-hidden').val(data.favicon_url || '');
 
@@ -512,11 +526,11 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const id = document.getElementById('update-company-id').value;
         const fileInput = e.target.querySelector('.profile-favicon-input');
-        
+
         try {
             // 1. If a new logo is selected, upload it FIRST
             if (fileInput && fileInput.files[0]) {
-                console.log("New logo detected, uploading first...");
+                //console.log("New logo detected, uploading first...");
                 await handleFaviconUpload(id, fileInput.files[0], e.target);
             }
 
@@ -532,9 +546,9 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (res.ok) {
-                console.log("Profile details updated successfully");
+                //console.log("Profile details updated successfully");
                 showToast("Company Profile Updated!");
-                initBusinessIdentity(); 
+                initBusinessIdentity();
                 navigateTo('profile-list');
             } else {
                 const errorData = await res.json();
@@ -1145,7 +1159,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // Handle FY Filtering
             const fyFilter = document.getElementById('history-fy-filter');
             const selectedFY = fyFilter ? fyFilter.value : 'all';
-            
+
             // Collect all available FYs for the dropdown
             const availableFYs = new Set();
             invoices.forEach(inv => {
@@ -1171,8 +1185,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // Filter invoices by FY
-            const filteredInvoices = selectedFY === 'all' 
-                ? invoices 
+            const filteredInvoices = selectedFY === 'all'
+                ? invoices
                 : invoices.filter(inv => getFinancialYear(inv.invoice_date) === selectedFY);
 
             if (!filteredInvoices.length) {
@@ -1300,7 +1314,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const addr1 = p[addrLine1Key] || p.address_line_1 || '';
         const addr2 = p[addrLine2Key] || p.address_line_2 || '';
         const gstin = p.gstin || '';
-        
+
         let html = `<div style="font-size:12px;line-height:1.5;"><strong>${name}</strong>`;
         if (addr1) html += `<br>${addr1}`;
         if (addr2) html += `, ${addr2}`;
@@ -1328,7 +1342,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Seller dropdown
         const companySel = document.getElementById('inv-company-select');
-        if (!companySel) return; 
+        if (!companySel) return;
         if ($(companySel).hasClass('select2-hidden-accessible')) $(companySel).select2('destroy');
         companySel.innerHTML = '';
         try {
@@ -1340,7 +1354,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const def = companies.find(c => c.is_default) || companies[0];
                 const sellerInfoEl = document.getElementById('inv-seller-info');
                 if (def && sellerInfoEl) sellerInfoEl.innerHTML = partyInfoHtml(def, 'address_line_1', 'address_line_2');
-                
+
                 $(companySel).off('select2:select').on('select2:select', async function (e) {
                     const cr2 = await fetch(`${API_BASE}/profiles/${e.params.data.id}`);
                     const comp = await cr2.json();
@@ -1373,13 +1387,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     const client = await cr3.json();
                     const buyerInfoEl = document.getElementById('inv-buyer-info');
                     const consigneeInfoEl = document.getElementById('inv-consignee-info');
-                    
+
                     if (buyerInfoEl) buyerInfoEl.innerHTML = partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
                     if (consigneeInfoEl) {
                         consigneeInfoEl.innerHTML = '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
-                                                    partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                            partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
                     }
-                    
+
                     if (shipSel) {
                         if ($(shipSel).hasClass('select2-hidden-accessible')) $(shipSel).select2('destroy');
                         shipSel.innerHTML = '<option value="">-- Same as Billing --</option>';
@@ -1395,7 +1409,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         }).on('select2:unselect', function () {
                             if (consigneeInfoEl) {
                                 consigneeInfoEl.innerHTML = '<em style="font-size:11px;color:#888;">Same as Billing Address</em><br>' +
-                                                            partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
+                                    partyInfoHtml(client, 'billing_address_line_1', 'billing_address_line_2');
                             }
                             recalcInvoiceTotals();
                         });
@@ -1441,6 +1455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td><button type="button" onclick="removeInvoiceRow(this)" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button></td>
         `;
         tbody.appendChild(tr);
+        setupItemAutocomplete(tr); // Setup autocomplete for the new row
     }
     // Expose immediately after definition — NOT inside the function body
     window.addInvoiceItem = _invoiceItemRowAdder;
@@ -1513,10 +1528,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await fetch(`${API_BASE}/invoices`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
             if (!res.ok) throw new Error((await res.json()).detail);
             const data = await res.json();
-            
+
             // Auto-trigger PDF download
             await downloadInvoicePdf(data.invoice_id, payload.invoice_no);
-            
+
             showToast('Invoice saved successfully.', 'success', () => {
                 navigateTo('invoice-list');
             });
@@ -1526,7 +1541,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function _invoiceOpenNewProxy() { return openNewInvoice(); }
 
-    window.clearInvoiceForm = function() {
+    window.clearInvoiceForm = function () {
         if (!confirm("Clear all data in this invoice?")) return;
         const form = document.getElementById('invoice-form');
         const body = document.getElementById('invoice-items-body');
@@ -1565,7 +1580,7 @@ function recalcRow(input) {
     document.getElementById('inv-grand-total').textContent = '\u20b9 ' + (tt + tx).toFixed(2);
 }
 function addInvoiceItem() {
-    console.log("addInvoiceItem called!");
+    //console.log("addInvoiceItem called!");
     // Fully self-contained — no dependency on inner-scoped functions
     const tbody = document.getElementById('invoice-items-body');
     if (!tbody) { console.error("No tbody found"); return; }
@@ -1620,7 +1635,7 @@ document.addEventListener('invoice:download-pdf', async e => {
         a.href = url; a.download = `Invoice_${no.replace(/\//g, '_')}.pdf`;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         URL.revokeObjectURL(url);
-        
+
         // Close the "Generating" modal and show success (or just show success)
         showToast('PDF Downloaded!', 'success');
     } catch (ex) {
@@ -1649,7 +1664,7 @@ window.downloadBackup = async function () {
 
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        
+
         // Try to get filename from header
         const disposition = res.headers.get('Content-Disposition');
         let filename = `Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
@@ -1732,3 +1747,125 @@ window.uploadRestore = async function () {
         btn.disabled = false;
     }
 };
+// --- PAYMENTS HISTORY ---
+async function loadPaymentsList() {
+    const tbody = document.getElementById('payments-history-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+
+    try {
+        const res = await fetch(`${API_BASE}/payments/report`);
+        const payments = await res.json();
+        tbody.innerHTML = '';
+
+        if (payments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No payment records found.</td></tr>';
+            return;
+        }
+
+        payments.forEach((p, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td><strong>${p.invoice_no}</strong></td>
+                    <td>${p.invoice_date}</td>
+                    <td>${p.client_name || '-'}</td>
+                    <td class="right">&#8377;&nbsp;${p.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td class="right" style="color:#2e7d32;">&#8377;&nbsp;${p.amount_paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td class="right" style="color:${p.amount_due > 0 ? '#d32f2f' : '#2e7d32'};"><strong>&#8377;&nbsp;${p.amount_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Error loading payments.</td></tr>';
+    }
+}
+
+// --- ITEM MASTER / PRODUCT CATALOG ---
+async function loadItemsList() {
+    const tbody = document.getElementById('items-master-body');
+    if (!tbody) return;
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+
+    try {
+        const res = await fetch(`${API_BASE}/items`);
+        const items = await res.json();
+        tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Your catalog is empty.</td></tr>';
+            return;
+        }
+
+        items.forEach((item, idx) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                    <td>${idx + 1}</td>
+                    <td>${item.description}</td>
+                    <td>${item.hsn_sac || '-'}</td>
+                    <td>${item.default_unit || '-'}</td>
+                    <td>${item.gst_rate}%</td>
+                    <td>
+                        <button class="btn btn-link" onclick="deleteItemMaster('${item.id}')" style="color:#d32f2f;"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:red;">Error loading catalog.</td></tr>';
+    }
+}
+
+window.deleteItemMaster = async function (id) {
+    if (!confirm('Remove this item from catalog?')) return;
+    try {
+        const res = await fetch(`${API_BASE}/items/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+            showToast('Item removed from catalog.');
+            loadItemsList();
+        }
+    } catch (e) { showToast('Failed to delete item.', 'error'); }
+};
+
+window.openItemModal = function () {
+    // We'll use a simple prompt for now, or just let users add via invoice
+    // Actually, let's just show a toast that they can add via invoice for now to keep it simple,
+    // unless you want a full modal.
+    showToast('Tip: Use "New Invoice" to add items. They will be auto-saved to catalog!', 'info');
+};
+
+// ITEM AUTOCOMPLETE IN INVOICE
+async function setupItemAutocomplete(rowElement) {
+    const descInput = rowElement.querySelector('.inv-item-desc');
+    if (!descInput) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/items`);
+        const items = await res.json();
+
+        // Unique ID for datalist to avoid collisions
+        const datalistId = 'datalist-items-master';
+        let datalist = document.getElementById(datalistId);
+        if (!datalist) {
+            datalist = document.createElement('datalist');
+            datalist.id = datalistId;
+            document.body.appendChild(datalist);
+        }
+        datalist.innerHTML = items.map(it => `<option value="${it.description}">`).join('');
+        descInput.setAttribute('list', datalistId);
+
+        descInput.addEventListener('change', (e) => {
+            const matched = items.find(it => it.description === e.target.value);
+            if (matched) {
+                const hsn = rowElement.querySelector('.inv-item-hsn');
+                const unit = rowElement.querySelector('.inv-item-unit');
+                const gst = rowElement.querySelector('.inv-item-gst');
+                if (hsn) hsn.value = matched.hsn_sac || '';
+                if (unit) unit.value = matched.default_unit || 'NOS';
+                if (gst) $(gst).val(matched.gst_rate).trigger('change');
+            }
+        });
+    } catch (e) { console.error("Autocomplete setup failed", e); }
+}
+
+// Wrapper no longer needed as setup is in _invoiceItemRowAdder

@@ -19,7 +19,13 @@ This document summarizes the current status and recent updates to the GST Invoic
 - **Summary**: Real-time aggregation of revenue, receivables, and collections per Financial Year.
 
 ### Payments & Receipts (Completed)
+- **Payments History Page**: Added a dedicated page to view payment status, total collections, and pending dues per client/invoice.
 - **Modal Logic**: Users can record partial or full payments directly from the invoice list.
+
+### Items Master & Catalog (Completed)
+- **Product Catalog**: New UI to manage the master list of items and services.
+- **Auto-Save Logic**: Automatically adds new items to the catalog during invoice creation if they don't exist.
+- **Invoice Autocomplete**: Description field now auto-fills HSN/SAC, Unit, and GST Rate from the catalog.
 
 ## 🛠️ System Architecture
 
@@ -34,4 +40,4 @@ This document summarizes the current status and recent updates to the GST Invoic
 - [ ] Advanced GST reconciliation tools.
 
 ---
-**Last Updated**: 2026-03-16 by AGENT
+**Last Updated**: 2026-03-16 by AGENT (Integration of Payments & Items complete)
