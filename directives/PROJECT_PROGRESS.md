@@ -9,9 +9,9 @@ This document summarizes the current status and recent updates to the GST Invoic
 - **Automation**: Implemented auto-generation of Invoice Numbers and auto-PDF download on save.
 - **Improved UX**: Added tooltips to history actions and Financial Year filtering for the history table.
 - **Bug Fixes**: 
-    - Resolved duplicate invoice display issue caused by double-loading events.
-    - Fixed crashes during party selection (removed obsolete button references).
-    - Mapped internal row-adding functions to global scope for HTML event compatibility.
+    - Resolved duplicate invoice display issue on the Dashboard and History pages using SQL grouping.
+    - Improved navigation reliability by handling clicks on icons and nested elements.
+    - Fixed `API_BASE` and state scoping issues in `app.js` to eliminate runtime loading errors.
     - Fixed logo/favicon update persistence issues.
 
 ### Dashboard & Analytics (Completed)
@@ -40,4 +40,4 @@ This document summarizes the current status and recent updates to the GST Invoic
 - [ ] Advanced GST reconciliation tools.
 
 ---
-**Last Updated**: 2026-03-16 by AGENT (Integration of Payments & Items complete)
+**Last Updated**: 2026-03-16 by AGENT (Integration of Payments, Items & Critical Fixes complete)

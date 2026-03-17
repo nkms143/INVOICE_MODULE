@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 
 <head>
@@ -507,7 +507,6 @@
                     </div>
                 </div>
 
-    </div>
     </template>
 
 
@@ -625,12 +624,16 @@
     <!-- ===================== PAYMENTS HISTORY PAGE ===================== -->
     <section id="payments-list-page" class="page">
         <div class="table-card">
-            <div class="report-header">
-                <div>
-                    <h3 class="section-heading"><i class="fas fa-money-check-alt"></i> Payments Report</h3>
-                    <p class="section-subheading">Status of all invoices, payments received, and pending balances.</p>
+                <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
+                    <div class="form-group" style="margin:0; width:150px;">
+                        <select id="payments-fy-filter" class="form-control" style="padding:6px;" onchange="loadPaymentsList()">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-secondary" onclick="exportPaymentsToExcel()">
+                        <i class="fas fa-file-excel" style="color:#1d6f42;"></i> EXPORT
+                    </button>
                 </div>
-            </div>
             <div class="table-wrapper">
                 <table class="data-table" id="payments-list-table">
                     <thead>
@@ -662,8 +665,8 @@
                     <h3 class="section-heading"><i class="fas fa-boxes"></i> Item Master Catalog</h3>
                     <p class="section-subheading">View and manage your saved products and services.</p>
                 </div>
-                <div class="header-actions">
-                    <button class="btn btn-primary" onclick="showToast('Add functionality coming soon', 'info')">
+                <div class="header-actions" style="display:flex; gap:10px; align-items:center;">
+                    <button class="btn btn-primary" onclick="openItemModal()">
                         <i class="fas fa-plus"></i> ADD NEW ITEM
                     </button>
                 </div>
@@ -672,6 +675,7 @@
                 <table class="data-table" id="items-master-table">
                     <thead>
                         <tr>
+                            <th>Sl No.</th>
                             <th>Description</th>
                             <th>HSN/SAC</th>
                             <th>Unit</th>
@@ -681,7 +685,7 @@
                     </thead>
                     <tbody id="items-master-body">
                         <tr>
-                            <td colspan="5" style="text-align:center;">Loading...</td>
+                            <td colspan="6" style="text-align:center;">Loading...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -998,7 +1002,50 @@
         </div>
     </div>
 
-    <script src="app.js?v=6"></script>
+    <!-- Item Master Modal -->
+    <div id="item-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center;">
+        <div class="card p-4" style="width:100%; max-width:450px; background:white;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;"><i class="fas fa-box"></i> <span id="item-modal-title">Add New Item</span></h3>
+                <button class="btn btn-link" style="color:#888;" onclick="closeItemModal()"><i
+                        class="fas fa-times"></i></button>
+            </div>
+            <form id="item-form" onsubmit="submitItemMaster(event)">
+                <input type="hidden" id="item-id">
+                <div class="form-group mb-3">
+                    <label>Description of Item <span class="required">*</span></label>
+                    <input type="text" id="item-description" required class="form-control" placeholder="e.g. Graphic Design Services">
+                </div>
+                <div class="form-group mb-3">
+                    <label>HSN / SAC Code</label>
+                    <input type="text" id="item-hsn" class="form-control" placeholder="optional">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div class="form-group mb-3">
+                        <label>Unit</label>
+                        <input type="text" id="item-unit" class="form-control" placeholder="NOS">
+                    </div>
+                    <div class="form-group mb-3">
+                        <label>GST Rate (%)</label>
+                        <select id="item-gst" class="form-control">
+                            <option value="0">0%</option>
+                            <option value="5">5%</option>
+                            <option value="12">12%</option>
+                            <option value="18" selected>18%</option>
+                            <option value="28">28%</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="text-align:right; margin-top:10px;">
+                    <button type="button" class="btn btn-secondary" onclick="closeItemModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="btn-submit-item">Save to Catalog</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js?v=8"></script>
 </body>
 
 </html>

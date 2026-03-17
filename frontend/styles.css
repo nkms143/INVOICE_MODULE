@@ -37,11 +37,31 @@ body {
     width: var(--sidebar-w);
     background-color: var(--primary);
     color: var(--white);
-    padding: 40px 20px;
+    padding: 30px 20px;
     display: flex;
     flex-direction: column;
     position: fixed;
     height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Firefox support */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+}
+
+/* Custom Scrollbar for Sidebar (Chrome/Edge/Safari) */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.6);
 }
 
 .sidebar-header {
@@ -163,11 +183,11 @@ body {
 }
 
 .page {
-    display: none;
+    display: none !important;
 }
 
 .page.active {
-    display: block;
+    display: block !important;
 }
 
 .content-header {
@@ -643,4 +663,59 @@ td {
     background: var(--bg-card);
     border-radius: 16px;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Responsiveness for Smaller Monitors (14-inch laptops / Tablets) */
+@media (max-width: 1400px) {
+    .main-content {
+        padding: 25px 30px;
+    }
+    
+    .content-header {
+        margin-bottom: 25px;
+    }
+    
+    .content-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .form-grid-3 {
+        grid-template-columns: 1fr 1fr;
+        gap: 15px;
+    }
+    
+    .form-grid-2 {
+        gap: 15px;
+    }
+    
+    .summary-box {
+        padding: 15px;
+    }
+    
+    .summary-label {
+        font-size: 10px;
+    }
+    
+    .summary-value {
+        font-size: 18px;
+    }
+}
+
+@media (max-width: 992px) {
+    :root {
+        --sidebar-w: 240px;
+    }
+    
+    .main-content {
+        padding: 20px;
+    }
+    
+    .form-grid-3, .form-grid-2 {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
 }

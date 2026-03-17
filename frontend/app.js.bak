@@ -1,4 +1,4 @@
-// --- Globals ---
+﻿// --- Globals ---
 const API_BASE = '/api';
 const state = {
     currentPage: 'dashboard',
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Routing ---
     function navigateTo(pageId) {
         state.currentPage = pageId;
-
+        
         // Kill all page active classes
         document.querySelectorAll('.page').forEach(p => {
             p.classList.remove('active');
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', () => {
             pageElement.classList.add('active');
             pageElement.style.display = 'block';
         }
-
+        
         // Scroll to top
         window.scrollTo(0, 0);
 
@@ -234,8 +234,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Prevent interference with submenu toggles
             if (target.parentElement.classList.contains('has-submenu') && target.tagName === 'A' && target.nextElementSibling && target.nextElementSibling.classList.contains('submenu')) {
-                // let the submenu toggle handle it
-                return;
+                 // let the submenu toggle handle it
+                 return;
             }
 
             e.preventDefault();
@@ -1453,7 +1453,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td style="text-align:center;">${rowNum}</td>
-            <td><select class="inv-item-desc" style="width:100%;box-sizing:border-box;"></select></td>
+            <td><input type="text" class="inv-item-desc" placeholder="Description of goods / service" style="width:100%;box-sizing:border-box;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
             <td><input type="text" class="inv-item-hsn" placeholder="HSN" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
             <td><input type="number" class="inv-item-qty" min="0" step="any" placeholder="0" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;" oninput="recalcRow(this)"></td>
             <td><input type="text" class="inv-item-unit" placeholder="NOS" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
@@ -1586,7 +1586,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     });
                 }
-                $(fyFilter).off('change').on('change', () => loadPaymentsList());
             }
 
             const fy = fyFilter ? fyFilter.value : '';
@@ -1728,32 +1727,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ITEM AUTOCOMPLETE IN INVOICE
     async function setupItemAutocomplete(rowElement) {
-        const descSelect = rowElement.querySelector('.inv-item-desc');
-        if (!descSelect) return;
+        const descInput = rowElement.querySelector('.inv-item-desc');
+        if (!descInput) return;
 
         try {
             const res = await fetch(`${API_BASE}/items`);
             const items = await res.json();
 
-            // Prepare options for Select2
-            const options = items.map(it => ({
-                id: it.description,
-                text: it.description,
-                data: it
-            }));
+            // Unique ID for datalist to avoid collisions
+            const datalistId = 'datalist-items-master';
+            let datalist = document.getElementById(datalistId);
+            if (!datalist) {
+                datalist = document.createElement('datalist');
+                datalist.id = datalistId;
+                document.body.appendChild(datalist);
+            }
+            datalist.innerHTML = items.map(it => `<option value="${it.description}">`).join('');
+            descInput.setAttribute('list', datalistId);
 
-            $(descSelect).select2({
-                tags: true,
-                placeholder: "Search or type item...",
-                data: options,
-                width: '100%',
-                dropdownParent: $(rowElement).closest('#invoice-new-page')
-            });
-
-            $(descSelect).on('select2:select', function (e) {
-                const selectedData = e.params.data;
-                const matched = selectedData.data || items.find(it => it.description === selectedData.id);
-
+            descInput.addEventListener('change', (e) => {
+                const matched = items.find(it => it.description === e.target.value);
                 if (matched) {
                     const hsn = rowElement.querySelector('.inv-item-hsn');
                     const unit = rowElement.querySelector('.inv-item-unit');
@@ -1761,15 +1754,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (hsn) hsn.value = matched.hsn_sac || '';
                     if (unit) unit.value = matched.default_unit || 'NOS';
                     if (gst) $(gst).val(matched.gst_rate).trigger('change');
-                    recalcRow(rowElement.querySelector('.inv-item-qty') || descSelect);
                 }
             });
-
-            // Handle type-in (new tags)
-            $(descSelect).on('select2:clear', function () {
-                recalcRow(rowElement.querySelector('.inv-item-qty') || descSelect);
-            });
-
         } catch (e) { console.error("Autocomplete setup failed", e); }
     }
 
@@ -1799,147 +1785,164 @@ function recalcRow(input) {
     document.getElementById('inv-total-tax').textContent = '\u20b9 ' + tx.toFixed(2);
     document.getElementById('inv-grand-total').textContent = '\u20b9 ' + (tt + tx).toFixed(2);
 }
+function addInvoiceItem() {
+    //console.log("addInvoiceItem called!");
+    // Fully self-contained — no dependency on inner-scoped functions
+    const tbody = document.getElementById('invoice-items-body');
+    if (!tbody) { console.error("No tbody found"); return; }
+    const rowNum = tbody.rows.length + 1;
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td style="text-align:center;">${rowNum}</td>
+        <td><input type="text" class="inv-item-desc" placeholder="Description of goods / service" style="width:100%;box-sizing:border-box;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
+        <td><input type="text" class="inv-item-hsn" placeholder="HSN" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
+        <td><input type="number" class="inv-item-qty" min="0" step="any" placeholder="0" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;" oninput="recalcRow(this)"></td>
+        <td><input type="text" class="inv-item-unit" placeholder="NOS" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;"></td>
+        <td><input type="number" class="inv-item-rate" min="0" step="any" placeholder="0.00" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;" oninput="recalcRow(this)"></td>
+        <td class="inv-item-taxable" style="text-align:right;padding-right:8px;">0.00</td>
+        <td><select class="inv-item-gst" style="width:100%;padding:4px;border:1px solid #ccc;border-radius:4px;" onchange="recalcRow(this)">
+            <option value="0">0%</option><option value="5">5%</option><option value="12">12%</option>
+            <option value="18" selected>18%</option><option value="28">28%</option>
+        </select></td>
+        <td class="inv-item-tax" style="text-align:right;padding-right:8px;">0.00</td>
+        <td><button type="button" onclick="removeInvoiceRow(this)" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:16px;"><i class="fas fa-times"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
 function removeInvoiceRow(btn) {
-        btn.closest('tr').remove();
-        const tbody = document.getElementById('invoice-items-body');
-        [...tbody.rows].forEach((r, i) => r.cells[0].textContent = i + 1);
-        let tt = 0, tx = 0;
-        document.querySelectorAll('#invoice-items-body tr').forEach(r => {
-            tt += parseFloat(r.querySelector('.inv-item-taxable')?.textContent || 0);
-            tx += parseFloat(r.querySelector('.inv-item-tax')?.textContent || 0);
+    btn.closest('tr').remove();
+    const tbody = document.getElementById('invoice-items-body');
+    [...tbody.rows].forEach((r, i) => r.cells[0].textContent = i + 1);
+    let tt = 0, tx = 0;
+    document.querySelectorAll('#invoice-items-body tr').forEach(r => {
+        tt += parseFloat(r.querySelector('.inv-item-taxable')?.textContent || 0);
+        tx += parseFloat(r.querySelector('.inv-item-tax')?.textContent || 0);
+    });
+    document.getElementById('inv-total-taxable').textContent = '\u20b9 ' + tt.toFixed(2);
+    document.getElementById('inv-total-tax').textContent = '\u20b9 ' + tx.toFixed(2);
+    document.getElementById('inv-grand-total').textContent = '\u20b9 ' + (tt + tx).toFixed(2);
+}
+function downloadInvoicePdf(id, no) {
+    const event = new CustomEvent('invoice:download-pdf', { detail: { id, no } });
+    document.dispatchEvent(event);
+}
+function deleteInvoice(id) {
+    document.dispatchEvent(new CustomEvent('invoice:delete', { detail: { id } }));
+}
+document.addEventListener('invoice:download-pdf', async e => {
+    const { id, no } = e.detail;
+    showToast('Generating PDF, please wait...', 'info');
+    try {
+        const res = await fetch(`/api/invoices/${id}/pdf`);
+        if (!res.ok) throw new Error(await res.text());
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = `Invoice_${no.replace(/\//g, '_')}.pdf`;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        // Close the "Generating" modal and show success (or just show success)
+        showToast('PDF Downloaded!', 'success');
+    } catch (ex) {
+        showToast('PDF error: ' + ex.message, 'error');
+    }
+});
+document.addEventListener('invoice:delete', async e => {
+    if (!confirm('Delete this invoice permanently?')) return;
+    const res = await fetch(`/api/invoices/${e.detail.id}`, { method: 'DELETE' });
+    if (res.ok) {
+        showToast('Invoice deleted successfully.');
+        if (typeof loadInvoiceList === 'function') loadInvoiceList();
+    }
+});
+
+// ==============================================================
+//  SETTINGS / DATA MANAGEMENT (Backup & Restore)
+// ==============================================================
+
+window.downloadBackup = async function () {
+    showToast('Generating backup... please wait', 'info');
+
+    try {
+        const res = await fetch('/api/backup');
+        if (!res.ok) throw new Error(await res.text());
+
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+
+        // Try to get filename from header
+        const disposition = res.headers.get('Content-Disposition');
+        let filename = `Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
+        if (disposition && disposition.indexOf('attachment') !== -1) {
+            const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
+            const matches = filenameRegex.exec(disposition);
+            if (matches != null && matches[1]) {
+                filename = matches[1].replace(/['"]/g, '');
+            }
+        }
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        if (url) {
+            showToast('Backup Downloaded!');
+        }
+    } catch (e) {
+        console.error("Backup failed:", e);
+        showToast('Backup failed: ' + e.message, 'error');
+    }
+};
+
+let selectedRestoreFile = null;
+
+window.handleRestoreSelection = function (event) {
+    const file = event.target.files[0];
+    if (file) {
+        selectedRestoreFile = file;
+        document.getElementById('restore-file-name').innerText = file.name;
+        document.getElementById('btn-restore-db').disabled = false;
+    } else {
+        selectedRestoreFile = null;
+        document.getElementById('restore-file-name').innerText = '';
+        document.getElementById('btn-restore-db').disabled = true;
+    }
+};
+
+window.uploadRestore = async function () {
+    if (!selectedRestoreFile) return;
+
+    if (!confirm("WARNING: This will overwrite your current database. Any changes made after this backup was created will be permanently lost. Are you sure you want to proceed?")) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', selectedRestoreFile);
+
+    const btn = document.getElementById('btn-restore-db');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restoring...';
+    btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/restore', {
+            method: 'POST',
+            body: formData
         });
-        document.getElementById('inv-total-taxable').textContent = '\u20b9 ' + tt.toFixed(2);
-        document.getElementById('inv-total-tax').textContent = '\u20b9 ' + tx.toFixed(2);
-        document.getElementById('inv-grand-total').textContent = '\u20b9 ' + (tt + tx).toFixed(2);
-    }
-    function downloadInvoicePdf(id, no) {
-        const event = new CustomEvent('invoice:download-pdf', { detail: { id, no } });
-        document.dispatchEvent(event);
-    }
-    function deleteInvoice(id) {
-        document.dispatchEvent(new CustomEvent('invoice:delete', { detail: { id } }));
-    }
-    document.addEventListener('invoice:download-pdf', async e => {
-        const { id, no } = e.detail;
-        showToast('Generating PDF, please wait...', 'info');
-        try {
-            const res = await fetch(`/api/invoices/${id}/pdf`);
-            if (!res.ok) throw new Error(await res.text());
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url; a.download = `Invoice_${no.replace(/\//g, '_')}.pdf`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            URL.revokeObjectURL(url);
 
-            // Close the "Generating" modal and show success (or just show success)
-            showToast('PDF Downloaded!', 'success');
-        } catch (ex) {
-            showToast('PDF error: ' + ex.message, 'error');
-        }
-    });
-    document.addEventListener('invoice:delete', async e => {
-        if (!confirm('Delete this invoice permanently?')) return;
-        const res = await fetch(`/api/invoices/${e.detail.id}`, { method: 'DELETE' });
         if (res.ok) {
-            showToast('Invoice deleted successfully.');
-            if (typeof loadInvoiceList === 'function') loadInvoiceList();
-        }
-    });
-
-    // ==============================================================
-    //  SETTINGS / DATA MANAGEMENT (Backup & Restore)
-    // ==============================================================
-
-    window.downloadBackup = async function () {
-        showToast('Generating backup... please wait', 'info');
-
-        try {
-            const res = await fetch('/api/backup');
-            if (!res.ok) throw new Error(await res.text());
-
-            const blob = await res.blob();
-            const url = URL.createObjectURL(blob);
-
-            // Try to get filename from header
-            const disposition = res.headers.get('Content-Disposition');
-            let filename = `Backup_${new Date().toISOString().replace(/[:.]/g, '-')}.zip`;
-            if (disposition && disposition.indexOf('attachment') !== -1) {
-                const filenameRegex = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/;
-                const matches = filenameRegex.exec(disposition);
-                if (matches != null && matches[1]) {
-                    filename = matches[1].replace(/['"]/g, '');
-                }
-            }
-
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            if (url) {
-                showToast('Backup Downloaded!');
-            }
-        } catch (e) {
-            console.error("Backup failed:", e);
-            showToast('Backup failed: ' + e.message, 'error');
-        }
-    };
-
-    let selectedRestoreFile = null;
-
-    window.handleRestoreSelection = function (event) {
-        const file = event.target.files[0];
-        if (file) {
-            selectedRestoreFile = file;
-            document.getElementById('restore-file-name').innerText = file.name;
-            document.getElementById('btn-restore-db').disabled = false;
+            showToast('Database restored successfully! Reloading...');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
         } else {
-            selectedRestoreFile = null;
-            document.getElementById('restore-file-name').innerText = '';
-            document.getElementById('btn-restore-db').disabled = true;
-        }
-    };
-
-    window.uploadRestore = async function () {
-        if (!selectedRestoreFile) return;
-
-        if (!confirm("WARNING: This will overwrite your current database. Any changes made after this backup was created will be permanently lost. Are you sure you want to proceed?")) {
-            return;
-        }
-
-        const formData = new FormData();
-        formData.append('file', selectedRestoreFile);
-
-        const btn = document.getElementById('btn-restore-db');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restoring...';
-        btn.disabled = true;
-
-        try {
-            const res = await fetch('/api/restore', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (res.ok) {
-                showToast('Database restored successfully! Reloading...');
-                setTimeout(() => {
-                    window.location.reload();
-                }, 1500);
-            } else {
-                const err = await res.json();
-                showToast(err.detail || 'Error restoring database', 'error');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-            }
-        } catch (e) {
-            console.error("Restore failed:", e);
-            showToast('Network error during restore', 'error');
+            const err = await res.json();
+            showToast(err.detail || 'Error restoring database', 'error');
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
-    };

@@ -110,10 +110,13 @@ class InvoiceRenderer:
         data['grand_total_words'] = self.amount_to_words(data['totals']['grand_total'])
         data['tax_amount_words'] = self.amount_to_words(data['totals']['total_tax_amount'])
         
-        # Calculate empty rows to fill page
+        # Smart Padding: dynamic gap based on item count to ensure single-page layout
         num_items = len(items)
-        total_desired_rows = 14
-        empty_rows_count = max(6, total_desired_rows - num_items)
+        # Target a total area (Items + Gaps) of ~11 rows. 
+        # For 1 item, this gives (11-1)=10 gaps. For 8 items, it gives (11-8)=3 gaps.
+        # This shrinking gap anchors the totals to the bottom of Page 1.
+        MAX_ITEMS_AREA_ROWS = 11
+        empty_rows_count = max(2, MAX_ITEMS_AREA_ROWS - num_items)
         
         # Determine tax labels to show as standalone rows
         standalone_tax_rows = []

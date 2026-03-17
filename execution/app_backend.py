@@ -101,7 +101,7 @@ class ItemMaster(BaseModel):
     id: Optional[str] = None
     description: str
     hsn_sac: Optional[str] = None
-    default_unit: Optional[str] = None
+    default_unit: Optional[str] = "NOS"
     gst_rate: float = 18.0
 
 class InvoiceItem(BaseModel):
@@ -612,8 +612,7 @@ async def create_invoice(inv: InvoiceCreate):
                 cursor.execute('''
                     INSERT INTO items_master (id, description, hsn_sac, default_unit, gst_rate)
                     VALUES (?, ?, ?, ?, ?)
-                ''', (item_id, item.description, item.hsn_sac, item.unit, 
-                      (item.cgst_rate + item.sgst_rate + item.igst_rate)))
+                ''', (item_id, item.description, item.hsn_sac, item.unit, item.igst_rate))
             else:
                 item_id = existing_item['id']
 
@@ -678,10 +677,10 @@ def create_receipt(inv_id: str, receipt: ReceiptCreate):
         conn.close()
 
 @app.get("/api/payments/report")
-def get_payments_report():
+def get_payments_report(fy: Optional[str] = None):
     conn = get_db()
     cursor = conn.cursor()
-    cursor.execute('''
+    query = '''
         SELECT 
             i.invoice_no, i.invoice_date, i.grand_total,
             c.name as client_name,
@@ -689,17 +688,66 @@ def get_payments_report():
         FROM invoices i
         LEFT JOIN clients c ON i.client_id = c.id
         LEFT JOIN receipts r ON i.id = r.invoice_id
-        GROUP BY i.id
-        ORDER BY i.invoice_date DESC, i.created_at DESC
-    ''')
+        WHERE 1=1
+    '''
+    params = []
+    if fy:
+        # We'll filter by FY in Python or use a more complex SQL. 
+        # For simplicity in this logic, we'll fetch all and filter in Python since FY logic is Python-based.
+        pass
+
+    cursor.execute(query + " GROUP BY i.id ORDER BY i.invoice_date DESC, i.created_at DESC")
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     
+    # Filter by FY if requested
+    if fy:
+        rows = [r for r in rows if get_financial_year(r['invoice_date']) == fy]
+
     # Add Amount Due
     for row in rows:
         row['amount_due'] = row['grand_total'] - row['amount_paid']
         
     return rows
+
+@app.get("/api/payments/export")
+def export_payments_excel(fy: Optional[str] = None):
+    """Exports the payments report to an Excel file."""
+    import pandas as pd
+    data = get_payments_report(fy)
+    if not data:
+        # Return empty excel or skip
+        df = pd.DataFrame(columns=["Sl No", "Invoice No", "Invoice Date", "Client Name", "Total Amount", "Amount Paid", "Amount Due"])
+    else:
+        # Prepare for DataFrame
+        records = []
+        for idx, r in enumerate(data):
+            records.append({
+                "Sl No": idx + 1,
+                "Invoice No": r['invoice_no'],
+                "Invoice Date": r['invoice_date'],
+                "Client Name": r['client_name'],
+                "Total Amount": r['grand_total'],
+                "Amount Paid": r['amount_paid'],
+                "Amount Due": r['amount_due']
+            })
+        df = pd.DataFrame(records)
+    
+    # Write to buffer
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Payments_Report')
+    
+    output.seek(0)
+    
+    fy_str = f"_{fy}" if fy else ""
+    filename = f"Payments_Report{fy_str}.xlsx"
+    
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 def get_financial_year(date_str: str) -> str:
     """Calculates Indian Financial Year (April 1 to March 31) from a YYYY-MM-DD string."""
