@@ -1608,14 +1608,21 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             payments.forEach((p, idx) => {
+                // Format YYYY-MM-DD to DD-MM-YYYY
+                const fmtDate = (ds) => {
+                    if (!ds || ds === '-') return ds;
+                    const pts = ds.split('-');
+                    return pts.length === 3 ? `${pts[2]}-${pts[1]}-${pts[0]}` : ds;
+                };
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                         <td>${idx + 1}</td>
                         <td><strong>${p.invoice_no}</strong></td>
-                        <td>${p.invoice_date}</td>
+                        <td>${fmtDate(p.invoice_date)}</td>
                         <td>${p.client_name || '-'}</td>
                         <td class="right">&#8377;&nbsp;${p.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td style="color:#666;">${p.payment_date}</td>
+                        <td style="color:#666;">${fmtDate(p.payment_date)}</td>
                         <td style="color:#666; font-size:0.85rem;">${p.payment_method}</td>
                         <td class="right" style="color:#2e7d32; font-weight:600;">&#8377;&nbsp;${p.paid_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td class="right" style="color:${p.amount_due > 0 ? '#d32f2f' : '#2e7d32'};"><strong>&#8377;&nbsp;${p.amount_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>

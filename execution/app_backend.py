@@ -728,13 +728,24 @@ def export_payments_excel(fy: Optional[str] = None):
         # Prepare for DataFrame
         records = []
         for idx, r in enumerate(data):
+            # Format dates to DD-MM-YYYY
+            inv_date = r['invoice_date']
+            if inv_date and '-' in inv_date:
+                parts = inv_date.split('-')
+                if len(parts) == 3: inv_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+            
+            paid_date = r['payment_date']
+            if paid_date and '-' in paid_date:
+                parts = paid_date.split('-')
+                if len(parts) == 3: paid_date = f"{parts[2]}-{parts[1]}-{parts[0]}"
+
             records.append({
                 "Sl No": idx + 1,
                 "Invoice No": r['invoice_no'],
-                "Invoice Date": r['invoice_date'],
+                "Invoice Date": inv_date,
                 "Client Name": r['client_name'],
                 "Total Amount": r['grand_total'],
-                "Paid Date": r['payment_date'],
+                "Paid Date": paid_date,
                 "Paid Mode": r['payment_method'],
                 "Amount Paid": r['paid_amount'],
                 "Balance Due": r['amount_due']
