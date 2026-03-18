@@ -680,23 +680,20 @@ def create_receipt(inv_id: str, receipt: ReceiptCreate):
 def get_payments_report(fy: Optional[str] = None):
     conn = get_db()
     cursor = conn.cursor()
+    # Updated query to show transaction-level detail
     query = '''
         SELECT 
-            i.invoice_no, i.invoice_date, i.grand_total,
+            i.id as invoice_id, i.invoice_no, i.invoice_date, i.grand_total,
             c.name as client_name,
-            COALESCE(SUM(r.amount), 0) as amount_paid
+            r.amount as paid_amount, r.payment_date, r.payment_method,
+            (SELECT COALESCE(SUM(amount), 0) FROM receipts WHERE invoice_id = i.id) as total_paid_to_date
         FROM invoices i
         LEFT JOIN clients c ON i.client_id = c.id
         LEFT JOIN receipts r ON i.id = r.invoice_id
         WHERE 1=1
     '''
-    params = []
-    if fy:
-        # We'll filter by FY in Python or use a more complex SQL. 
-        # For simplicity in this logic, we'll fetch all and filter in Python since FY logic is Python-based.
-        pass
-
-    cursor.execute(query + " GROUP BY i.id ORDER BY i.invoice_date DESC, i.created_at DESC")
+    # Execute and fetch all
+    cursor.execute(query + " ORDER BY i.invoice_date DESC, r.payment_date DESC")
     rows = [dict(r) for r in cursor.fetchall()]
     conn.close()
     
@@ -704,10 +701,19 @@ def get_payments_report(fy: Optional[str] = None):
     if fy:
         rows = [r for r in rows if get_financial_year(r['invoice_date']) == fy]
 
-    # Add Amount Due
+    # Process rows for UI consistency
     for row in rows:
-        row['amount_due'] = row['grand_total'] - row['amount_paid']
+        grand_total = float(row.get('grand_total') or 0)
+        total_paid = float(row.get('total_paid_to_date') or 0)
+        row['amount_due'] = grand_total - total_paid
         
+        if row['paid_amount'] is None:
+            row['paid_amount'] = 0.0
+            row['payment_date'] = "-"
+            row['payment_method'] = "-"
+        else:
+            row['paid_amount'] = float(row['paid_amount'])
+            
     return rows
 
 @app.get("/api/payments/export")
@@ -728,8 +734,10 @@ def export_payments_excel(fy: Optional[str] = None):
                 "Invoice Date": r['invoice_date'],
                 "Client Name": r['client_name'],
                 "Total Amount": r['grand_total'],
-                "Amount Paid": r['amount_paid'],
-                "Amount Due": r['amount_due']
+                "Paid Date": r['payment_date'],
+                "Paid Mode": r['payment_method'],
+                "Amount Paid": r['paid_amount'],
+                "Balance Due": r['amount_due']
             })
         df = pd.DataFrame(records)
     

@@ -219,6 +219,14 @@ document.addEventListener('DOMContentLoaded', () => {
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const parent = link.parentElement;
+
+            // Accordion: If we are about to open this menu, close others first
+            if (!parent.classList.contains('open')) {
+                document.querySelectorAll('.has-submenu.open').forEach(item => {
+                    item.classList.remove('open');
+                });
+            }
+
             parent.classList.toggle('open');
             // Navigate to main submenu page
             navigateTo(link.dataset.page);
@@ -1570,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tbody = document.getElementById('payments-history-body');
         const fyFilter = document.getElementById('payments-fy-filter');
         if (!tbody) return;
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading...</td></tr>';
 
         try {
             // First, handle FY filter population if empty
@@ -1595,7 +1603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tbody.innerHTML = '';
 
             if (payments.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No payment records found.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;">No payment records found.</td></tr>';
                 return;
             }
 
@@ -1607,13 +1615,16 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td>${p.invoice_date}</td>
                         <td>${p.client_name || '-'}</td>
                         <td class="right">&#8377;&nbsp;${p.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td class="right" style="color:#2e7d32;">&#8377;&nbsp;${p.amount_paid.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td style="color:#666;">${p.payment_date}</td>
+                        <td style="color:#666; font-size:0.85rem;">${p.payment_method}</td>
+                        <td class="right" style="color:#2e7d32; font-weight:600;">&#8377;&nbsp;${p.paid_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
                         <td class="right" style="color:${p.amount_due > 0 ? '#d32f2f' : '#2e7d32'};"><strong>&#8377;&nbsp;${p.amount_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
                     `;
                 tbody.appendChild(tr);
             });
         } catch (e) {
-            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:red;">Error loading payments.</td></tr>';
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:red;">Error loading payments.</td></tr>';
         }
     }
 
