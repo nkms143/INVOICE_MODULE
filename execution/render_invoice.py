@@ -1,6 +1,7 @@
 import sqlite3
 import asyncio
 import os
+from decimal import Decimal, ROUND_HALF_UP
 from jinja2 import Environment, FileSystemLoader
 from num2words import num2words
 
@@ -18,11 +19,9 @@ class InvoiceRenderer:
             value = float(value)
             is_negative = value < 0
             value = abs(value)
-            integer_part = int(value)
-            decimal_part = round((value - integer_part) * 100)
-            if decimal_part >= 100:
-                integer_part += 1
-                decimal_part -= 100
+            d = Decimal(str(value)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            integer_part = int(d)
+            decimal_part = int((d - integer_part) * 100)
             s = str(integer_part)
             # Indian grouping: last 3 digits, then every 2
             if len(s) > 3:
@@ -41,8 +40,9 @@ class InvoiceRenderer:
     def amount_to_words(self, amount):
         """Converts amount to Indian Rupee word format."""
         try:
-            integer_part = int(amount)
-            decimal_part = int(round((amount - integer_part) * 100))
+            d = Decimal(str(amount)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            integer_part = int(d)
+            decimal_part = int((d - integer_part) * 100)
             
             words = num2words(integer_part, lang='en_IN').replace(',', '').title()
             result = f"INR {words} Rupees"
