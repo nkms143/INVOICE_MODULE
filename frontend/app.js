@@ -911,9 +911,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><strong>${i.invoice_no}</strong></td>
                     <td>${i.invoice_date}</td>
                     <td>${i.client_name}</td>
-                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.total_taxable_value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.total_tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.total_taxable_value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.total_tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td class="right" style="white-space: nowrap;">&#8377;&nbsp;${parseFloat(i.grand_total).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     <td>
                         <button class="btn btn-link" onclick="window.open('/api/invoices/${i.id}/pdf')"><i class="fas fa-file-pdf"></i> PDF</button>
                     </td>
@@ -924,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const stc = document.getElementById('stat-total-count');
             if (stc) stc.innerText = count;
             const sta = document.getElementById('stat-total-amount');
-            if (sta) sta.innerText = `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+            if (sta) sta.innerText = `₹ ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
         } catch (e) { console.error("Dashboard load failed", e); }
     }
 
@@ -965,11 +965,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const fyData = dashboardSummaryData.find(d => d.financial_year === selectedFy);
 
             if (fyData) {
-                document.getElementById('kpi-total-revenue').innerText = `₹ ${parseFloat(fyData.total_revenue).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+                document.getElementById('kpi-total-revenue').innerText = `₹ ${parseFloat(fyData.total_revenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                 document.getElementById('kpi-invoice-count').innerText = `${fyData.invoice_count} invoices generated`;
 
-                document.getElementById('kpi-bills-receivable').innerText = `₹ ${parseFloat(fyData.bills_receivable).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-                document.getElementById('kpi-amount-received').innerText = `₹ ${parseFloat(fyData.total_received).toLocaleString('en-IN', { minimumFractionDigits: 2 })} collected so far`;
+                document.getElementById('kpi-bills-receivable').innerText = `₹ ${parseFloat(fyData.bills_receivable).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                document.getElementById('kpi-amount-received').innerText = `₹ ${parseFloat(fyData.total_received).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} collected so far`;
             }
 
             // Also render the charts for this FY
@@ -1114,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     html += `<tr style="background:${bg};">
                         <td style="${tdStyle} color:#888;">${i + 1}</td>
                         <td style="${tdStyle} font-weight:600; color:#333;">${clientName}</td>
-                        <td style="${tdStyle} text-align:right; font-family:monospace; color:#1a6e2f;">₹ ${parseFloat(data.top_clients.data[i]).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td style="${tdStyle} text-align:right; font-family:monospace; color:#1a6e2f;">₹ ${parseFloat(data.top_clients.data[i]).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>`;
                 });
                 html += '</tbody></table>';
@@ -1139,7 +1139,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     html2 += `<tr style="background:${bg2};">
                         <td style="${tdStyle2} color:#888;">${i + 1}</td>
                         <td style="${tdStyle2} font-weight:600; color:#333;">${productName}</td>
-                        <td style="${tdStyle2} text-align:right; font-family:monospace; color:#1a6e2f;">₹ ${parseFloat(data.top_products.data[i]).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td style="${tdStyle2} text-align:right; font-family:monospace; color:#1a6e2f;">₹ ${parseFloat(data.top_products.data[i]).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                     </tr>`;
                 });
                 html2 += '</tbody></table>';
@@ -1248,9 +1248,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><strong>${inv.invoice_no}</strong></td>
                     <td>${inv.invoice_date || '-'}</td>
                     <td>${inv.client_name || '-'}</td>
-                    <td style="text-align:right; white-space: nowrap;">&#8377;&nbsp;${parseFloat(inv.total_taxable_value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style="text-align:right; white-space: nowrap;">&#8377;&nbsp;${parseFloat(inv.total_tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                    <td style="text-align:right; white-space: nowrap;"><strong>&#8377;&nbsp;${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                    <td style="text-align:right; white-space: nowrap;">&#8377;&nbsp;${parseFloat(inv.total_taxable_value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="text-align:right; white-space: nowrap;">&#8377;&nbsp;${parseFloat(inv.total_tax_amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                    <td style="text-align:right; white-space: nowrap;"><strong>&#8377;&nbsp;${grandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
                     <td style="text-align:center;">${statusBadge}</td>
                     <td style="white-space: nowrap;">
                         <button class="btn btn-secondary" title="Generate PDF" style="padding:4px 8px;font-size:12px;margin-right:2px;" onclick="downloadInvoicePdf('${inv.id}','${inv.invoice_no}')"><i class="fas fa-file-pdf"></i></button>
@@ -1634,11 +1634,11 @@ document.addEventListener('DOMContentLoaded', () => {
                         <td><strong>${p.invoice_no}</strong></td>
                         <td>${fmtDate(p.invoice_date)}</td>
                         <td>${p.client_name || '-'}</td>
-                        <td class="right">&#8377;&nbsp;${p.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                        <td class="right">&#8377;&nbsp;${p.grand_total.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td style="color:#666;">${fmtDate(p.payment_date)}</td>
                         <td style="color:#666; font-size:0.85rem;">${p.payment_method}</td>
-                        <td class="right" style="color:#2e7d32; font-weight:600;">&#8377;&nbsp;${p.paid_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
-                        <td class="right" style="color:${p.amount_due > 0 ? '#d32f2f' : '#2e7d32'};"><strong>&#8377;&nbsp;${p.amount_due.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</strong></td>
+                        <td class="right" style="color:#2e7d32; font-weight:600;">&#8377;&nbsp;${p.paid_amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="right" style="color:${p.amount_due > 0 ? '#d32f2f' : '#2e7d32'};"><strong>&#8377;&nbsp;${p.amount_due.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
                     `;
                 tbody.appendChild(tr);
             });
