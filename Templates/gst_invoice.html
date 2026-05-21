@@ -30,7 +30,7 @@
 
         /* Header Layout */
         header {
-            text-align: right;
+            text-align: center;
             margin-bottom: 5px;
         }
 
@@ -60,7 +60,6 @@
             grid-template-columns: 50% 50%;
             border: 1.5px solid black;
             border-bottom: none;
-            border-top: 3px solid black;
         }
 
         .top-meta>div {
@@ -80,7 +79,7 @@
 
         .meta-text {
             margin: 0;
-            font-size: 11px;
+            font-size: 10px;
             padding: 1px 0;
         }
 
@@ -105,7 +104,7 @@
 
         .meta-label {
             display: block;
-            font-size: 11px;
+            font-size: 9px;
             margin-bottom: 1px;
             text-transform: uppercase;
         }
@@ -168,7 +167,7 @@
         table.items-table th {
             border-bottom: 1px solid black;
             text-align: left;
-            font-weight: normal;
+            font-weight: bold;
             text-transform: uppercase;
         }
 
@@ -228,14 +227,14 @@
 
         table.tax-table th {
             text-align: center;
-            font-weight: normal;
+            font-weight: bold;
             text-transform: uppercase;
         }
 
         /* Footer Info */
         .footer-info {
             display: grid;
-            grid-template-columns: 2fr 1fr;
+            grid-template-columns: 45% 55%;
             border: 1.5px solid black;
             border-top: none;
         }
@@ -243,15 +242,40 @@
         .footer-left {
             padding: 4px;
             border-right: 1px solid black;
-        }
-
-        .footer-right {
-            padding: 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            align-items: right;
-            text-align: right;
+        }
+
+        .footer-right {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: stretch;
+            text-align: left;
+        }
+
+        /* Right-Side Meta CSS Grid */
+        .right-meta-grid {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            padding: 0 !important;
+        }
+
+        .grid-cell {
+            padding: 3.5px 5px;
+            border-bottom: 1px solid black;
+            box-sizing: border-box;
+        }
+
+        .grid-cell.border-right {
+            border-right: 1px solid black;
+        }
+
+        .grid-cell.span-2 {
+            grid-column: span 2;
+            border-bottom: none;
+            min-height: 40px;
         }
 
         .bank-details {
@@ -263,7 +287,7 @@
         .bank-details p {
             margin: 1px 0;
             display: grid;
-            grid-template-columns: 120px 1fr;
+            grid-template-columns: 110px 8px 1fr;
         }
 
         .declaration {
@@ -301,14 +325,14 @@
 
         <!-- TOP META: Company + Invoice Info (full-width separator rows) -->
         <table
-            style="width:100%;border-collapse:collapse;border:1.5px solid black;border-top:3px solid black;border-bottom:none;table-layout:fixed;">
+            style="width:100%;border-collapse:collapse;border:1.5px solid black;border-bottom:none;table-layout:fixed;">
             <colgroup>
                 <col style="width:50%;">
                 <col style="width:25%;">
                 <col style="width:25%;">
             </colgroup>
             <tbody>
-                <!-- Row 1: Company name + Invoice No + e-Way -->
+                <!-- Row 1: Company name + Invoice No + Dated -->
                 <tr>
                     <td rowspan="3" style="padding:6px;border-right:1px solid black;vertical-align:top;">
                         <h1 style="font-size:18px;margin:0 0 4px 0;font-weight:bold;">{{ company.name }}</h1>
@@ -317,7 +341,7 @@
                         <p class="meta-text">{{ company.city }}{% if company.pincode %} - {{ company.pincode }}{% endif
                             %}</p>
                         <p class="meta-text" style="font-weight:bold;margin-top:4px;">GSTIN/UIN: {{ company.gstin }}</p>
-                        <p class="meta-text"><b>State Name:</b> {{ company.state_name }}, <b>State Code:</b> {{
+                        <p class="meta-text">State Name: {{ company.state_name }}, State Code: {{
                             company.state_code }}</p>
                         <p class="meta-text"><b>E-Mail:</b> {{ company.email }}</p>
                     </td>
@@ -326,22 +350,22 @@
                         <div class="meta-value">{{ invoice.invoice_no }}</div>
                     </td>
                     <td style="padding:3px 5px;border-bottom:1px solid black;">
-                        <span class="meta-label">e-Way Bill No.</span>
-                        <div class="meta-value">{{ invoice.eway_bill_no or '-' }}</div>
-                    </td>
-                </tr>
-                <!-- Row 2: Date + Mode of Payment -->
-                <tr>
-                    <td style="padding:3px 5px;border-right:1px solid black;border-bottom:1px solid black;">
                         <span class="meta-label">Dated</span>
                         <div class="meta-value">{{ invoice.invoice_date }}</div>
+                    </td>
+                </tr>
+                <!-- Row 2: Delivery Note + Mode/Terms of Payment -->
+                <tr>
+                    <td style="padding:3px 5px;border-right:1px solid black;border-bottom:1px solid black;">
+                        <span class="meta-label">Delivery Note</span>
+                        <div class="meta-value">{{ invoice.delivery_note or '-' }}</div>
                     </td>
                     <td style="padding:3px 5px;border-bottom:1px solid black;">
                         <span class="meta-label">Mode/Terms of Payment</span>
                         <div class="meta-value">{{ invoice.payment_mode_terms or '-' }}</div>
                     </td>
                 </tr>
-                <!-- Row 3: Reference No + Other References -->
+                <!-- Row 3: Reference No & Date + Other References -->
                 <tr>
                     <td style="padding:3px 5px;border-right:1px solid black;">
                         <span class="meta-label">Reference No. &amp; Date.</span>
@@ -366,7 +390,7 @@
                         endif %}</p>
                     <p class="meta-text" style="font-weight: bold; margin-top: 4px;">GSTIN/UIN: {{ consignee.gstin }}
                     </p>
-                    <p class="meta-text"><b>State Name:</b> {{ consignee.state_name }}, <b>State Code:</b> {{
+                    <p class="meta-text">State Name: {{ consignee.state_name }}, State Code: {{
                         consignee.state_code }}</p>
                 </div>
                 <div class="box-section" style="border-bottom: none;">
@@ -376,43 +400,43 @@
                     {% if buyer.address_line_2 %}<p class="meta-text">{{ buyer.address_line_2 }}</p>{% endif %}
                     <p class="meta-text">{{ buyer.city }}{% if buyer.pincode %} - {{ buyer.pincode }}{% endif %}</p>
                     <p class="meta-text" style="font-weight: bold; margin-top: 4px;">GSTIN/UIN: {{ buyer.gstin }}</p>
-                    <p class="meta-text"><b>State Name:</b> {{ buyer.state_name }}, <b>State Code:</b> {{
-                        buyer.state_code }}
-                    </p>
+                    <p class="meta-text">State Name: {{ buyer.state_name }}, State Code: {{
+                        buyer.state_code }}</p>
                 </div>
             </div>
-            <div class="mid-meta-col" style="display: grid; grid-template-columns: 1fr 1fr; padding: 0;">
-                <div style="border-right: 1px solid black;">
-                    <div class="box-section">
-                        <span class="meta-label">Buyer's Order No.</span>
-                        <div class="meta-value">{{ invoice.buyers_order_no or '-' }}</div>
-                    </div>
-                    <div class="box-section">
-                        <span class="meta-label">Dispatch Doc No.</span>
-                        <div class="meta-value">{{ invoice.dispatch_doc_no or '-' }}</div>
-                    </div>
-                    <div class="box-section">
-                        <span class="meta-label">Dispatched through</span>
-                        <div class="meta-value">{{ invoice.dispatched_through or '-' }}</div>
-                    </div>
-                    <div class="box-section" style="border-bottom: none;">
-                        <span class="meta-label">Terms of Delivery</span>
-                        <div class="meta-value">{{ invoice.terms_of_delivery or '-' }}</div>
+            <div class="mid-meta-col right-meta-grid">
+                <div class="grid-cell border-right">
+                    <span class="meta-label">Buyer's Order No.</span>
+                    <div class="meta-value">{{ invoice.buyers_order_no or '-' }}</div>
+                </div>
+                <div class="grid-cell">
+                    <span class="meta-label">Dated</span>
+                    <div class="meta-value">{{ invoice.order_date or '-' }}</div>
+                </div>
+                <div class="grid-cell border-right">
+                    <span class="meta-label">Dispatch Doc No. / e-Way Bill</span>
+                    <div class="meta-value">
+                        {{ invoice.dispatch_doc_no or '-' }}
+                        {% if invoice.eway_bill_no %}
+                        / {{ invoice.eway_bill_no }}
+                        {% endif %}
                     </div>
                 </div>
-                <div>
-                    <div class="box-section">
-                        <span class="meta-label">Dated</span>
-                        <div class="meta-value">{{ invoice.order_date or '-' }}</div>
-                    </div>
-                    <div class="box-section">
-                        <span class="meta-label">Delivery Note Date</span>
-                        <div class="meta-value">{{ invoice.delivery_note_date or '-' }}</div>
-                    </div>
-                    <div class="box-section" style="border-bottom: none;">
-                        <span class="meta-label">Destination</span>
-                        <div class="meta-value">{{ invoice.destination or '-' }}</div>
-                    </div>
+                <div class="grid-cell">
+                    <span class="meta-label">Delivery Note Date</span>
+                    <div class="meta-value">{{ invoice.delivery_note_date or '-' }}</div>
+                </div>
+                <div class="grid-cell border-right">
+                    <span class="meta-label">Dispatched through</span>
+                    <div class="meta-value">{{ invoice.dispatched_through or '-' }}</div>
+                </div>
+                <div class="grid-cell">
+                    <span class="meta-label">Destination</span>
+                    <div class="meta-value">{{ invoice.destination or '-' }}</div>
+                </div>
+                <div class="grid-cell span-2">
+                    <span class="meta-label">Terms of Delivery</span>
+                    <div class="meta-value">{{ invoice.terms_of_delivery or '-' }}</div>
                 </div>
             </div>
         </div>
@@ -434,7 +458,7 @@
                 <tr>
                     <td class="center">{{ loop.index }}</td>
                     <td>
-                        <b>{{ item.description }}</b>
+                        {{ item.description }}
                     </td>
                     <td class="center">{{ item.hsn_sac }}</td>
                     <td class="right">{{ item.quantity | in_format }}</td>
@@ -455,6 +479,10 @@
                         {% if row.is_tax_label %}
                         <span class="item-subtext right"
                             style="display: block; width: 100%; font-style: normal; font-weight: bold;">{{
+                            row.description }}</span>
+                        {% elif row.is_round_off %}
+                        <span class="item-subtext"
+                            style="display: block; width: 100%; font-style: normal; font-weight: bold; text-align: left;">{{
                             row.description }}</span>
                         {% else %}
                         &nbsp;
@@ -480,7 +508,7 @@
                         {% endif %}
                     </td>
                     <td class="right">
-                        {% if row.is_tax_label %}
+                        {% if row.is_tax_label or row.is_round_off %}
                         <span class="item-subtext right" style="font-style: normal; font-weight: bold;">&#8377; {{
                             row.amount
                             }}</span>
@@ -494,7 +522,7 @@
                     <td></td>
                     <td class="right">Total</td>
                     <td></td>
-                    <td class="right">{{ totals.total_quantity.split(' ')[0] }}</td>
+                    <td class="right">{{ totals.total_quantity.split(' ')[0] | in_format }}</td>
                     <td></td>
                     <td class="center">{{ totals.total_quantity.split(' ')[1] if ' ' in totals.total_quantity else '' }}
                     </td>
@@ -507,13 +535,13 @@
             style="width: 100%; border-collapse: collapse; border-left: 1.5px solid black; border-right: 1.5px solid black; margin: 0;">
             <tr>
                 <td style="padding: 4px 6px; border: none; font-size: 10px;">
-                    <span class="meta-label">Amount Chargeable (in words) :</span>
-                    <span id="grand-total-words"
-                        style="font-weight: normal; font-style: italic; text-transform: capitalize;">{{
-                        grand_total_words }}</span>
-                    <span
-                        style="float: right; font-style: italic; font-weight: normal; font-size: 9px; margin-top: 1px;">E.
-                        & O.E</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span class="meta-label" style="display: inline-block; margin-bottom: 0;">Amount Chargeable (in words)</span>
+                        <span style="font-style: italic; font-weight: normal; font-size: 9px;">E. & O.E</span>
+                    </div>
+                    <div id="grand-total-words" style="font-weight: bold; font-style: italic; text-transform: capitalize; margin-top: 3px; font-size: 11px;">
+                        {{ grand_total_words }}
+                    </div>
                 </td>
             </tr>
         </table>
@@ -581,38 +609,46 @@
             style="width: 100%; border-collapse: collapse; border-left: 1.5px solid black; border-right: 1.5px solid black; border-top: none; border-bottom: 1px solid black; margin: 0;">
             <tr>
                 <td style="padding: 4px 6px; border: none; font-size: 10px;">
-                    <span class="meta-label">Tax Amount (in words) :</span>
-                    <span id="tax-amount-words"
-                        style="font-weight: bold; font-style: italic; text-transform: capitalize;">{{ tax_amount_words
-                        }}</span>
+                    <div style="display: flex; align-items: baseline;">
+                        <span class="meta-label" style="display: inline-block; margin-right: 5px; margin-bottom: 0;">Tax Amount (in words) :</span>
+                        <span id="tax-amount-words" style="font-weight: bold; font-style: italic; text-transform: capitalize; font-size: 10px;">{{ tax_amount_words }}</span>
+                    </div>
                 </td>
             </tr>
         </table>
 
         <div class="footer-info">
             <div class="footer-left">
-                <div class="bank-details">
-                    <span style="font-size: 9px; text-decoration: underline;">Company's Bank Details</span>
-                    <p><span class="meta-text">Bank Name</span><span class="meta-text">: <b>{{ company.bank_name
-                                }}</b></span></p>
-                    <p><span class="meta-text">A/c No.</span><span class="meta-text">: <b>{{ company.bank_account_no
-                                }}</b></span></p>
-                    <p><span class="meta-text">Branch & IFS Code</span><span class="meta-text">: <b>{{
-                                company.bank_branch_ifsc }}</b></span></p>
+                <div class="remarks-section" style="margin-bottom: 8px;">
+                    <span class="meta-label" style="text-decoration: underline; font-weight: bold;">Remarks:</span>
+                    <div style="font-size: 10px; white-space: pre-wrap; margin-top: 2px;">{{ remarks_text or '-' }}</div>
                 </div>
-                <div style="display: flex; margin-bottom: 5px; margin-top: 5px;">
-                    <span style="width: 120px; font-size: 9px;">Company's PAN</span>
-                    <span style="font-size: 9px;">: <b>{{ company.pan_number }}</b></span>
-                </div>
-                <div class="declaration">
-                    <p style="text-decoration: underline;">Declaration</p>
-                    <p>{{ company.declaration_text }}</p>
+                <div class="declaration" style="margin-top: auto; border-top: 1px solid black; padding-top: 4px;">
+                    <p style="text-decoration: underline; font-weight: bold; margin: 0 0 2px 0;">Declaration</p>
+                    <p style="margin: 0; line-height: 1.2;">{{ company.declaration_text }}</p>
                 </div>
             </div>
 
             <div class="footer-right">
-                <div class="signature-name">for {{ company.name }}</div>
-                <div class="auth-sig">Authorised Signatory</div>
+                <div class="bank-details" style="padding: 4px; border-bottom: 1px solid black; margin: 0;">
+                    <span style="font-size: 9px; text-decoration: underline; display: block; margin-bottom: 3px; font-weight: bold;">Company's Bank Details</span>
+                    <p>
+                        <span>Bank Name</span><span>:</span><b>{{ company.bank_name }}</b>
+                    </p>
+                    <p>
+                        <span>A/c No.</span><span>:</span><b>{{ company.bank_account_no }}</b>
+                    </p>
+                    <p>
+                        <span>Branch &amp; IFS Code</span><span>:</span><b>{{ company.bank_branch_ifsc }}</b>
+                    </p>
+                    <p>
+                        <span>Company's PAN</span><span>:</span><b>{{ company.pan_number }}</b>
+                    </p>
+                </div>
+                <div class="signature-section" style="padding: 4px; display: flex; flex-direction: column; justify-content: space-between; height: 100%; min-height: 70px; text-align: right;">
+                    <div class="signature-name" style="margin-bottom: 0; font-weight: bold; font-size: 10px; text-align: right;">for {{ company.name }}</div>
+                    <div class="auth-sig" style="margin-top: auto; font-size: 9px; text-align: right;">Authorised Signatory</div>
+                </div>
             </div>
         </div>
 

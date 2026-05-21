@@ -16,19 +16,25 @@ class InvoiceRenderer:
         """Format a number in Indian comma style: 1,00,000.00"""
         try:
             value = float(value)
+            is_negative = value < 0
+            value = abs(value)
             integer_part = int(value)
             decimal_part = round((value - integer_part) * 100)
+            if decimal_part >= 100:
+                integer_part += 1
+                decimal_part -= 100
             s = str(integer_part)
             # Indian grouping: last 3 digits, then every 2
             if len(s) > 3:
-                result = s[-3:]
+                result_str = s[-3:]
                 s = s[:-3]
                 while s:
-                    result = s[-2:] + ',' + result
+                    result_str = s[-2:] + ',' + result_str
                     s = s[:-2]
             else:
-                result = s
-            return f"{result}.{decimal_part:02d}"
+                result_str = s
+            formatted = f"{result_str}.{decimal_part:02d}"
+            return f"-{formatted}" if is_negative else formatted
         except (ValueError, TypeError):
             return str(value)
 
@@ -96,10 +102,16 @@ class InvoiceRenderer:
                 ts['cgst_amount'] += item.get('tax_amount', 0) / 2
                 ts['sgst_amount'] += item.get('tax_amount', 0) / 2
         
+        raw_grand_total = total_taxable + total_tax
+        rounded_grand_total = round(raw_grand_total)
+        round_off_val = rounded_grand_total - raw_grand_total
+
         data['totals'] = {
             'taxable_value': total_taxable,
             'total_tax_amount': total_tax,
-            'grand_total': total_taxable + total_tax,
+            'raw_grand_total': raw_grand_total,
+            'grand_total': rounded_grand_total,
+            'round_off': round_off_val,
             'total_quantity': f"{total_qty} {items[0]['unit']}" if items else "0",
             'igst_amount': total_tax if is_igst else 0,
             'cgst_amount': total_tax / 2 if not is_igst else 0,
@@ -109,6 +121,7 @@ class InvoiceRenderer:
         data['tax_summary'] = list(tax_summary.values())
         data['grand_total_words'] = self.amount_to_words(data['totals']['grand_total'])
         data['tax_amount_words'] = self.amount_to_words(data['totals']['total_tax_amount'])
+        data['remarks_text'] = data.get('invoice', {}).get('remarks') or ''
         
         # Smart Padding: dynamic gap based on item count to ensure single-page layout
         num_items = len(items)
@@ -125,20 +138,32 @@ class InvoiceRenderer:
                 "description": "OUTPUT IGST",
                 "amount": data['totals']['igst_amount'],
                 "tax_rate": items[0].get('igst_rate', 18), # Default fallback to 18 if missing
-                "tax_percent_symbol": "%"
+                "tax_percent_symbol": "%",
+                "is_tax_label": True
             })
         else:
             standalone_tax_rows.append({
                 "description": "OUTPUT CGST",
                 "amount": data['totals']['cgst_amount'],
                 "tax_rate": items[0].get('cgst_rate', 9),
-                "tax_percent_symbol": "%"
+                "tax_percent_symbol": "%",
+                "is_tax_label": True
             })
             standalone_tax_rows.append({
                 "description": "OUTPUT SGST",
                 "amount": data['totals']['sgst_amount'],
                 "tax_rate": items[0].get('sgst_rate', 9),
-                "tax_percent_symbol": "%"
+                "tax_percent_symbol": "%",
+                "is_tax_label": True
+            })
+
+        if abs(round_off_val) > 0.001:
+            standalone_tax_rows.append({
+                "description": "Round Off",
+                "amount": round_off_val,
+                "tax_rate": "",
+                "tax_percent_symbol": "",
+                "is_round_off": True
             })
 
         empty_rows = []
@@ -150,23 +175,22 @@ class InvoiceRenderer:
         insert_at = max(0, relative_index)
         
         for tax_row in standalone_tax_rows:
+            row_dict = {
+                "description": str(tax_row['description']),
+                "amount": self._indian_format(tax_row['amount']),
+                "tax_rate": tax_row['tax_rate'],
+                "tax_percent_symbol": str(tax_row['tax_percent_symbol']),
+            }
+            if tax_row.get('is_tax_label'):
+                row_dict['is_tax_label'] = True
+            elif tax_row.get('is_round_off'):
+                row_dict['is_round_off'] = True
+            
             if insert_at < len(empty_rows):
-                empty_rows[insert_at] = {
-                    "description": tax_row['description'],
-                    "amount": f"{tax_row['amount']:,.2f}",
-                    "tax_rate": tax_row['tax_rate'],
-                    "tax_percent_symbol": tax_row['tax_percent_symbol'],
-                    "is_tax_label": True
-                }
-                insert_at += 1
+                empty_rows[insert_at] = row_dict
+                insert_at = insert_at + 1
             else:
-                empty_rows.append({
-                    "description": tax_row['description'],
-                    "amount": f"{tax_row['amount']:,.2f}",
-                    "tax_rate": tax_row['tax_rate'],
-                    "tax_percent_symbol": tax_row['tax_percent_symbol'],
-                    "is_tax_label": True
-                })
+                empty_rows.append(row_dict)
         
         data['empty_rows_data'] = empty_rows
         return data
@@ -240,19 +264,57 @@ def fetch_invoice_data(db_path, invoice_id=None):
         "items": item_rows
     }
 
-async def generate_pdf(html_path, pdf_path):
-    """Uses playwright to generate PDF from HTML."""
-    from playwright.async_api import async_playwright
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.goto(f'file:///{os.path.abspath(html_path)}')
-        await page.emulate_media(media="print")
-        await page.pdf(path=pdf_path, format='A4', print_background=True, margin={'top': '0', 'right': '0', 'bottom': '0', 'left': '0'})
-        await browser.close()
+import subprocess
+import platform
+
+def find_system_browser():
+    """Finds MS Edge or Google Chrome on a Windows system."""
+    paths = [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+    ]
+    for path in paths:
+        if os.path.exists(path):
+            return path
+    return None
+
+def generate_pdf(html_path, pdf_path):
+    """Uses the system's Edge or Chrome browser to generate PDF from HTML."""
+    if platform.system() != "Windows":
+        raise Exception("This PDF generation method currently only supports Windows.")
+
+    browser_path = find_system_browser()
+    if not browser_path:
+        raise Exception("Could not find Microsoft Edge or Google Chrome installed on this system.")
+
+    # Format paths perfectly for the Windows command line
+    abs_html = os.path.abspath(html_path)
+    abs_pdf = os.path.abspath(pdf_path)
+
+    cmd = [
+        browser_path,
+        "--headless",
+        "--disable-gpu",
+        "--print-to-pdf-no-header",
+        "--enable-logging=stderr",
+        "--log-level=3", # Suppress most logs
+        f"--print-to-pdf={abs_pdf}",
+        f"file:///{abs_html}"
+    ]
+
+    try:
+        # Run the headless browser
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        if not os.path.exists(abs_pdf):
+             raise Exception("Browser executed but PDF file was not created.")
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr if e.stderr else str(e)
+        raise Exception(f"PDF generation failed: {error_msg}")
 
 if __name__ == "__main__":
-    db_file = "invoices.db"
+    db_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "invoices.db")
     
     # If DB doesn't exist, we can't fetch. In real app, user would run setup first.
     if not os.path.exists(db_file):
@@ -266,7 +328,10 @@ if __name__ == "__main__":
             html_out = renderer.render(invoice_data, 'rendered_invoice.html')
             print(f"HTML rendered to {html_out}")
             
-            asyncio.run(generate_pdf(html_out, 'GST_Invoice_Refined.pdf'))
-            print("PDF generated successfully from database data!")
+            try:
+                generate_pdf(html_out, 'GST_Invoice_Refined.pdf')
+                print("PDF generated successfully from database data!")
+            except Exception as e:
+                print(f"PDF generation failed: {e}")
         else:
             print("No invoice data found in the database.")

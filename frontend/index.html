@@ -771,9 +771,11 @@
                             <input type="text" name="eway_bill_no" placeholder="optional">
                         </div>
                     </div>
-                    <div class="form-group" style="margin:0;">
-                        <label>Destination</label>
-                        <input type="text" name="destination" placeholder="city / state">
+                    <div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Destination</label>
+                            <input type="text" name="destination" placeholder="city / state">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -837,23 +839,39 @@
                 </div>
             </div>
 
-            <!-- SECTION E: Totals Summary -->
+            <!-- SECTION E: Remarks & Totals Summary -->
             <div class="section-card" style="margin-bottom:14px;">
-                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;">
-                    <div class="summary-box">
-                        <span class="summary-label">Taxable Amount</span>
-                        <span class="summary-value" id="inv-total-taxable">₹ 0.00</span>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap:20px; align-items: start; margin-bottom:15px;">
+                    <!-- Left: Remarks -->
+                    <div class="form-group" style="margin:0; height: 100%; display: flex; flex-direction: column;">
+                        <label style="font-weight:600; display:flex; align-items:center; gap:8px; margin-bottom:8px; font-size:12px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px;">
+                            <i class="fas fa-comment-alt" style="color:var(--accent); font-size: 14px;"></i> Invoice Remarks
+                        </label>
+                        <textarea name="remarks" rows="4" style="width:100%; flex-grow:1; border:1px solid var(--border); border-radius:8px; padding:12px; font-family:inherit; font-size:13px; resize:vertical; background-color:#fcfcfc; transition:var(--transition); line-height:1.5;" placeholder="Enter any custom remarks, payment instructions, transport details, or terms to print on the bottom-left of the invoice..."></textarea>
                     </div>
-                    <div class="summary-box">
-                        <span class="summary-label">Total Tax (GST)</span>
-                        <span class="summary-value" id="inv-total-tax">₹ 0.00</span>
-                    </div>
-                    <div class="summary-box highlight-box">
-                        <span class="summary-label">Grand Total</span>
-                        <span class="summary-value" id="inv-grand-total">₹ 0.00</span>
+
+                    <!-- Right: Totals Summary -->
+                    <div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:12px;">
+                            <div class="summary-box" style="padding:10px 14px;">
+                                <span class="summary-label" style="font-size:10px;">Taxable Amount</span>
+                                <span class="summary-value" id="inv-total-taxable" style="font-size:18px;">₹ 0.00</span>
+                            </div>
+                            <div class="summary-box" style="padding:10px 14px;">
+                                <span class="summary-label" style="font-size:10px;">Total Tax (GST)</span>
+                                <span class="summary-value" id="inv-total-tax" style="font-size:18px;">₹ 0.00</span>
+                            </div>
+                        </div>
+                        <div class="summary-box highlight-box" style="padding:14px 16px; margin-bottom:8px; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                            <span class="summary-label" style="font-size:11px; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-dim); font-weight:500;">Grand Total (Rounded)</span>
+                            <span class="summary-value" id="inv-grand-total" style="font-size:24px; font-weight:700; color:var(--accent); margin-top:4px;">₹ 0.00</span>
+                        </div>
+                        <div id="inv-tax-type-badge" style="font-size:11px; color:var(--text-dim); text-align:right;"></div>
                     </div>
                 </div>
-                <div id="inv-tax-type-badge" style="margin-bottom:10px;font-size:12px;color:#888;"></div>
+
+                <hr style="border:0; border-top:1px solid var(--border); margin:15px 0;">
+
                 <div style="display:flex;gap:10px;justify-content:flex-end;">
                     <button type="button" class="btn btn-secondary" onclick="clearInvoiceForm()">
                         <i class="fas fa-eraser"></i> Clear

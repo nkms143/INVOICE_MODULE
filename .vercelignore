@@ -1,0 +1,12 @@
+.venv
+venv
+build
+dist
+dist_setup
+.git
+.vscode
+.tmp
+*.pdf
+*.spec
+invoices.db.fallback*
+invoices.db.pre_reset*

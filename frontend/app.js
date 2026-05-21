@@ -1,5 +1,13 @@
 // --- Globals ---
 const API_BASE = '/api';
+
+// --- Heartbeat for Auto-Shutdown ---
+function startHeartbeat() {
+    setInterval(() => {
+        fetch(`${API_BASE}/heartbeat`).catch(() => {});
+    }, 10000); // Pulse every 10 seconds
+}
+startHeartbeat();
 const state = {
     currentPage: 'dashboard',
     companies: [],
@@ -1316,7 +1324,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(a); a.click(); document.body.removeChild(a);
             URL.revokeObjectURL(url);
             showToast('PDF downloaded!');
-        } catch (e) { showToast('PDF failed: ' + e.message, 'error'); }
+        } catch (e) {
+            showToast('PDF failed: ' + e.message, 'error');
+            console.error('PDF generation error, opening HTML fallback:', e);
+            window.open(`${API_BASE}/invoices/${id}/html?print=true`, '_blank');
+        }
     }
 
     async function deleteInvoice(id) {
@@ -1539,6 +1551,7 @@ document.addEventListener('DOMContentLoaded', () => {
             delivery_note: fd.get('delivery_note') || null, delivery_note_date: fd.get('delivery_note_date') || null,
             terms_of_delivery: fd.get('terms_of_delivery') || null, dispatch_doc_no: fd.get('dispatch_doc_no') || null,
             dispatched_through: fd.get('dispatched_through') || null, destination: fd.get('destination') || null,
+            remarks: fd.get('remarks') || null,
             company_id: companyId, client_id: clientId, shipping_id: shippingId,
             total_taxable_value: totalTaxable, total_tax_amount: totalTax, grand_total: totalTaxable + totalTax, items
         };
@@ -1854,6 +1867,8 @@ function removeInvoiceRow(btn) {
             showToast('PDF Downloaded!', 'success');
         } catch (ex) {
             showToast('PDF error: ' + ex.message, 'error');
+            console.error('PDF generation error, opening HTML fallback:', ex);
+            window.open(`/api/invoices/${id}/html?print=true`, '_blank');
         }
     });
     document.addEventListener('invoice:delete', async e => {

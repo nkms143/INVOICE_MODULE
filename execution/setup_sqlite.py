@@ -106,6 +106,9 @@ def setup_database(db_path="invoices.db"):
             total_taxable_value REAL,
             total_tax_amount REAL,
             grand_total REAL,
+            other_references TEXT,
+            order_date TEXT,
+            remarks TEXT,
             FOREIGN KEY (company_id) REFERENCES company_profile (id),
             FOREIGN KEY (client_id) REFERENCES clients (id),
             FOREIGN KEY (shipping_id) REFERENCES shipping_addresses (id)

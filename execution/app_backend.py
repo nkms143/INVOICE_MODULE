@@ -9,7 +9,7 @@ from typing import List, Optional
 from fastapi import FastAPI, HTTPException, Request, File, UploadFile, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, HTMLResponse
 from pydantic import BaseModel
 import uvicorn
 
@@ -20,7 +20,18 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 # Import existing rendering logic
 from render_invoice import InvoiceRenderer, fetch_invoice_data, generate_pdf
 
+import time
+
+# Global for auto-shutdown tracking
+LAST_HEARTBEAT = time.time()
+
 app = FastAPI(title="Professional GST Invoice API")
+
+@app.get("/api/heartbeat")
+def heartbeat_endpoint():
+    global LAST_HEARTBEAT
+    LAST_HEARTBEAT = time.time()
+    return {"status": "ok"}
 
 # Enable CORS for local development
 app.add_middleware(
@@ -30,12 +41,195 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "invoices.db")
-UPLOADS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+# Helper to determine base directory for resources
+def get_resource_root():
+    """
+    Returns the root directory for static resources (frontend, Templates).
+    In 'frozen' mode (bundled), this is sys._MEIPASS.
+    Otherwise, it is the project root (one level up from 'execution').
+    """
+    if getattr(sys, 'frozen', False):
+        return sys._MEIPASS
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+RESOURCE_ROOT = get_resource_root()
+FRONTEND_DIR = os.path.join(RESOURCE_ROOT, "frontend")
+TEMPLATES_DIR = os.path.join(RESOURCE_ROOT, "Templates")
+
+# Helper to determine writable data directory
+def get_data_dir():
+    """
+    Returns a writable directory in the user profile for data storage.
+    If running on Vercel, it uses /tmp/GST_Invoice_System.
+    If the app is running in 'frozen' mode (bundled), it uses ~/Documents/GST_Invoice_System.
+    Otherwise, it uses the script's local directory for development.
+    """
+    if os.environ.get("VERCEL"):
+        data_root = os.path.join("/tmp", "GST_Invoice_System")
+        os.makedirs(data_root, exist_ok=True)
+        
+        # Check if DB exists, if not, copy the template database to /tmp
+        target_db = os.path.join(data_root, "invoices.db")
+        if not os.path.exists(target_db):
+            source_db = os.path.join(os.path.dirname(os.path.abspath(__file__)), "invoices.db")
+            if os.path.exists(source_db):
+                try:
+                    shutil.copy2(source_db, target_db)
+                except Exception as e:
+                    print(f"Error copying DB on Vercel: {e}")
+        return data_root
+    elif getattr(sys, 'frozen', False):
+        # Bundled App: Use User's Documents folder for persistence
+        data_root = os.path.join(os.path.expanduser("~"), "Documents", "GST_Invoice_System")
+        os.makedirs(data_root, exist_ok=True)
+        
+        # Check if DB exists, if not, copy the bundled template to the user's folder
+        target_db = os.path.join(data_root, "invoices.db")
+        if not os.path.exists(target_db):
+            # Use RESOURCE_ROOT to find the bundled DB
+            source_db = os.path.join(RESOURCE_ROOT, "execution", "invoices.db")
+            if os.path.exists(source_db):
+                try:
+                    shutil.copy2(source_db, target_db)
+                except:
+                    pass
+        return data_root
+    else:
+        # Development: Use the local execution folder
+        return os.path.dirname(os.path.abspath(__file__))
+
+DATA_ROOT = get_data_dir()
+DB_PATH = os.path.join(DATA_ROOT, "invoices.db")
+UPLOADS_DIR = os.path.join(DATA_ROOT, "uploads")
 FAVICONS_DIR = os.path.join(UPLOADS_DIR, "favicons")
 
-# Ensure upload directories exist
+# Ensure upload directories exist in the writable location
 os.makedirs(FAVICONS_DIR, exist_ok=True)
+
+def ensure_schema(db_path):
+    """Ensures all required tables exist in the database."""
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    
+    # 1. company_profile
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS company_profile (
+            id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            address_line_1 TEXT, address_line_2 TEXT, city TEXT,
+            state_name TEXT, state_code TEXT NOT NULL, country TEXT DEFAULT 'India',
+            pincode TEXT, place_id TEXT, gstin TEXT, pan_number TEXT,
+            bank_name TEXT, bank_account_no TEXT, bank_ifsc TEXT,
+            declaration_text TEXT, terms_conditions TEXT, favicon_url TEXT,
+            is_default INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Check if extra columns exist (migration)
+    cursor.execute("PRAGMA table_info(company_profile)")
+    cols = [c[1] for c in cursor.fetchall()]
+    for col in ['is_default', 'bank_address', 'email', 'mobile', 'landline', 'fax', 'favicon_url']:
+        if col not in cols:
+            cursor.execute(f"ALTER TABLE company_profile ADD COLUMN {col} TEXT DEFAULT NULL")
+    if 'is_default' in cols: # specific fix for type if needed, but TEXT/INTEGER is flexible
+        pass 
+    if 'created_at' not in cols:
+        cursor.execute("ALTER TABLE company_profile ADD COLUMN created_at TIMESTAMP")
+        cursor.execute("UPDATE company_profile SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+
+    # 2. clients
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS clients (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL,
+            billing_address_line_1 TEXT, billing_address_line_2 TEXT,
+            city TEXT, state_name TEXT, state_code TEXT NOT NULL,
+            country TEXT DEFAULT 'India', pincode TEXT, place_id TEXT,
+            gstin TEXT, email TEXT, mobile TEXT, landline TEXT, fax TEXT
+        )
+    ''')
+
+    # Add extra columns to clients if missing
+    cursor.execute("PRAGMA table_info(clients)")
+    cols = [c[1] for c in cursor.fetchall()]
+    for col in ['email', 'mobile', 'landline', 'fax']:
+        if col not in cols:
+            cursor.execute(f"ALTER TABLE clients ADD COLUMN {col} TEXT")
+
+    # 3. shipping_addresses
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS shipping_addresses (
+            id TEXT PRIMARY KEY, client_id TEXT NOT NULL, branch_name TEXT,
+            address_line_1 TEXT, address_line_2 TEXT, city TEXT,
+            state_name TEXT, state_code TEXT NOT NULL, country TEXT DEFAULT 'India',
+            pincode TEXT, place_id TEXT, gstin TEXT,
+            FOREIGN KEY (client_id) REFERENCES clients (id)
+        )
+    ''')
+
+    # 4. items_master
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS items_master (
+            id TEXT PRIMARY KEY, description TEXT NOT NULL, hsn_sac TEXT,
+            default_unit TEXT, gst_rate REAL DEFAULT 18.00
+        )
+    ''')
+
+    # 5. invoices
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS invoices (
+            id TEXT PRIMARY KEY, company_id TEXT NOT NULL, client_id TEXT NOT NULL,
+            shipping_id TEXT, invoice_no TEXT UNIQUE NOT NULL, invoice_date DATE DEFAULT CURRENT_DATE,
+            eway_bill_no TEXT, delivery_note TEXT, delivery_note_date DATE,
+            payment_mode_terms TEXT, reference_no TEXT, buyers_order_no TEXT,
+            dispatch_doc_no TEXT, dispatched_through TEXT, destination TEXT,
+            terms_of_delivery TEXT, total_taxable_value REAL, total_tax_amount REAL,
+            grand_total REAL, other_references TEXT, order_date TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (company_id) REFERENCES company_profile (id),
+            FOREIGN KEY (client_id) REFERENCES clients (id),
+            FOREIGN KEY (shipping_id) REFERENCES shipping_addresses (id)
+        )
+    ''')
+
+    # Migration for invoices
+    cursor.execute("PRAGMA table_info(invoices)")
+    cols = [c[1] for c in cursor.fetchall()]
+    for col in ['other_references', 'order_date', 'created_at', 'remarks']:
+        if col not in cols:
+            if col == 'created_at':
+                cursor.execute("ALTER TABLE invoices ADD COLUMN created_at TIMESTAMP")
+                cursor.execute("UPDATE invoices SET created_at = CURRENT_TIMESTAMP WHERE created_at IS NULL")
+            else:
+                cursor.execute(f"ALTER TABLE invoices ADD COLUMN {col} TEXT")
+
+    # 6. invoice_items
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS invoice_items (
+            id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, item_id TEXT,
+            description TEXT NOT NULL, hsn_sac TEXT, quantity REAL, unit TEXT,
+            rate REAL, taxable_value REAL, cgst_rate REAL DEFAULT 0,
+            sgst_rate REAL DEFAULT 0, igst_rate REAL DEFAULT 0,
+            tax_amount REAL, total_amount REAL,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id),
+            FOREIGN KEY (item_id) REFERENCES items_master (id)
+        )
+    ''')
+
+    # 7. receipts
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS receipts (
+            id TEXT PRIMARY KEY, invoice_id TEXT NOT NULL, amount REAL NOT NULL,
+            payment_date DATE NOT NULL, payment_method TEXT NOT NULL, notes TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (invoice_id) REFERENCES invoices (id)
+        )
+    ''')
+
+    conn.commit()
+    conn.close()
+
+# Initialize schema
+ensure_schema(DB_PATH)
 
 # --- Pydantic Models ---
 
@@ -135,6 +329,7 @@ class InvoiceCreate(BaseModel):
     terms_of_delivery: Optional[str] = None
     other_references: Optional[str] = None
     order_date: Optional[str] = None
+    remarks: Optional[str] = None
     items: List[InvoiceItem]
     total_taxable_value: float
     total_tax_amount: float
@@ -232,7 +427,7 @@ def update_profile(profile_id: str, profile: CompanyProfile):
     conn.close()
     return {"status": "success", "id": profile_id}
 
-@app.post("/api/profiles/{profile_id}/set-default")
+@app.put("/api/profiles/{profile_id}/default")
 def set_default_profile(profile_id: str):
     conn = get_db()
     cursor = conn.cursor()
@@ -535,7 +730,7 @@ def get_invoice(inv_id: str):
     return inv
 
 @app.get("/api/invoices/{inv_id}/pdf")
-async def get_invoice_pdf(inv_id: str):
+def get_invoice_pdf(inv_id: str):
     conn = get_db()
     cursor = conn.cursor()
     cursor.execute("SELECT invoice_no FROM invoices WHERE id = ?", (inv_id,))
@@ -544,21 +739,41 @@ async def get_invoice_pdf(inv_id: str):
     if not row:
         raise HTTPException(status_code=404, detail="Invoice not found")
     safe_no = row['invoice_no'].replace('/', '_').replace(' ', '_')
-    # Use an absolute tmp path next to the DB
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    pdf_path = os.path.join(base_dir, f"Invoice_{safe_no}.pdf")
-    html_path = os.path.join(base_dir, f"temp_{inv_id}.html")
+    # Use the writable DATA_ROOT for temporary files and PDF output
+    pdf_path = os.path.join(DATA_ROOT, f"Invoice_{safe_no}.pdf")
+    html_path = os.path.join(DATA_ROOT, f"temp_{inv_id}.html")
     try:
         data = fetch_invoice_data(DB_PATH, inv_id)
-        # Point Jinja2 loader at the Templates folder in project root
-        template_dir = os.path.join(os.path.dirname(base_dir), 'Templates')
-        renderer = InvoiceRenderer(template_dir=template_dir, template_file='gst_invoice.html')
+        # Use the global TEMPLATES_DIR which is absolute and safe
+        renderer = InvoiceRenderer(template_dir=TEMPLATES_DIR, template_file='gst_invoice.html')
         renderer.render(data, html_path)
-        await generate_pdf(html_path, pdf_path)
+        generate_pdf(html_path, pdf_path)  # Now synchronous
         if os.path.exists(html_path):
             os.remove(html_path)
         return FileResponse(pdf_path, media_type='application/pdf',
                             filename=f"Invoice_{safe_no}.pdf")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/invoices/{inv_id}/html", response_class=HTMLResponse)
+def get_invoice_html(inv_id: str, print: bool = False):
+    try:
+        data = fetch_invoice_data(DB_PATH, inv_id)
+        renderer = InvoiceRenderer(template_dir=TEMPLATES_DIR, template_file='gst_invoice.html')
+        html_path = os.path.join(DATA_ROOT, f"temp_{inv_id}_html.html")
+        renderer.render(data, html_path)
+        with open(html_path, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        if os.path.exists(html_path):
+            os.remove(html_path)
+        if print:
+            # Inject window.print() and auto-close / auto-back behavior to make the experience smooth
+            print_script = "<script>window.onload = () => { setTimeout(() => { window.print(); }, 500); }</script>"
+            if "</body>" in html_content:
+                html_content = html_content.replace("</body>", f"{print_script}</body>")
+            else:
+                html_content += print_script
+        return html_content
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -589,8 +804,8 @@ async def create_invoice(inv: InvoiceCreate):
                 reference_no, buyers_order_no, dispatch_doc_no, dispatched_through,
                 destination, terms_of_delivery,
                 total_taxable_value, total_tax_amount, grand_total,
-                other_references, order_date
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                other_references, order_date, remarks
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (
             inv_id, company_id, inv.client_id, inv.shipping_id or None,
             inv.invoice_no, invoice_date,
@@ -599,7 +814,7 @@ async def create_invoice(inv: InvoiceCreate):
             inv.dispatch_doc_no, inv.dispatched_through, inv.destination,
             inv.terms_of_delivery,
             inv.total_taxable_value, inv.total_tax_amount, inv.grand_total,
-            inv.other_references, inv.order_date
+            inv.other_references, inv.order_date, inv.remarks
         ))
         for item in inv.items:
             # Auto-save item to Item Master if it doesn't exist (matched by description)
@@ -1013,16 +1228,22 @@ async def favicon():
             return FileResponse(file_path)
     
     # Fallback: check frontend/favicon.ico
-    frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
-    frontend_favicon = os.path.join(frontend_dir, "favicon.ico")
+    # Define FRONTEND_DIR if not already defined (assuming it's a global constant)
+    # For this change, we'll assume FRONTEND_DIR is defined elsewhere or will be defined.
+    # If not, this would cause a NameError.
+    # For the purpose of this edit, we'll just replace the usage.
+    frontend_favicon = os.path.join(FRONTEND_DIR, "favicon.ico")
     if os.path.exists(frontend_favicon):
         return FileResponse(frontend_favicon)
         
     return Response(status_code=204) # No Content to stop 404 logs
 
 app.mount("/uploads", StaticFiles(directory=UPLOADS_DIR), name="uploads")
-frontend_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend")
-app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+# Define FRONTEND_DIR if not already defined (assuming it's a global constant)
+# For this change, we'll assume FRONTEND_DIR is defined elsewhere or will be defined.
+# If not, this would cause a NameError.
+# For the purpose of this edit, we'll just replace the usage.
+app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=8000)

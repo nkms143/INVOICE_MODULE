@@ -57,9 +57,28 @@ def migrate():
             except Exception as e:
                 print(f"Error adding {col}: {e}")
                 
+    # 3. Check invoices
+    cursor.execute("PRAGMA table_info(invoices)")
+    invoice_cols = [c[1] for c in cursor.fetchall()]
+    
+    invoice_missing = {
+        'other_references': 'TEXT',
+        'order_date': 'TEXT',
+        'remarks': 'TEXT'
+    }
+    
+    for col, type in invoice_missing.items():
+        if col not in invoice_cols:
+            print(f"Adding {col} to invoices")
+            try:
+                cursor.execute(f"ALTER TABLE invoices ADD COLUMN {col} {type}")
+            except Exception as e:
+                print(f"Error adding {col}: {e}")
+                
     conn.commit()
     conn.close()
     print("Migration complete.")
+
 
 if __name__ == "__main__":
     migrate()
