@@ -1,3 +1,197 @@
+// ==============================================================
+//  QWebChannel Portless API Fetch Bridge Monkeypatch
+// ==============================================================
+(function() {
+    const originalFetch = window.fetch;
+    let backend = null;
+    let backendPromise = null;
+
+    function initWebChannel() {
+        if (backendPromise) return backendPromise;
+        
+        backendPromise = new Promise((resolve) => {
+            if (typeof qt === 'undefined') {
+                console.log("QWebChannel: qt is not defined, using original fetch fallback.");
+                resolve(null);
+                return;
+            }
+            if (typeof QWebChannel === 'undefined') {
+                console.log("QWebChannel: QWebChannel is not defined, using original fetch fallback.");
+                resolve(null);
+                return;
+            }
+            try {
+                new QWebChannel(qt.webChannelTransport, function(channel) {
+                    console.log("QWebChannel connected!");
+                    backend = channel.objects.backend;
+                    resolve(backend);
+                });
+            } catch (e) {
+                console.error("QWebChannel initialization failed:", e);
+                resolve(null);
+            }
+        });
+        return backendPromise;
+    }
+
+    // Start WebChannel initialization immediately
+    initWebChannel();
+
+    // Helper to read file as Base64
+    function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => {
+                const base64Str = reader.result.split(',')[1];
+                resolve(base64Str);
+            };
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    window.fetch = async function(input, init) {
+        let url = "";
+        if (typeof input === 'string') {
+            url = input;
+        } else if (input && input.url) {
+            url = input.url;
+        }
+
+        // We only intercept calls to /api
+        if (url.startsWith('/api') || url.includes('/api/')) {
+            const activeBackend = await initWebChannel();
+            if (activeBackend) {
+                const method = (init && init.method) || 'GET';
+                
+                // Determine headers
+                const headers = {};
+                if (init && init.headers) {
+                    if (init.headers instanceof Headers) {
+                        for (const [k, v] of init.headers.entries()) {
+                            headers[k] = v;
+                        }
+                    } else if (Array.isArray(init.headers)) {
+                        init.headers.forEach(([k, v]) => { headers[k] = v; });
+                    } else {
+                        Object.assign(headers, init.headers);
+                    }
+                }
+
+                // Handle file upload endpoints specially (FormData can't be JSON serialized)
+                if (init && init.body && init.body instanceof FormData) {
+                    const formData = init.body;
+                    const file = formData.get('file');
+                    
+                    if (file) {
+                        try {
+                            const base64Str = await fileToBase64(file);
+                            let responseStr = "";
+                            
+                            if (url.includes('/favicon')) {
+                                const match = url.match(/\/api\/profiles\/([^/]+)\/favicon/);
+                                const profileId = match ? match[1] : '';
+                                responseStr = await new Promise((resolve) => {
+                                    activeBackend.upload_favicon(profileId, file.name, base64Str, resolve);
+                                });
+                            } else if (url.includes('/restore')) {
+                                responseStr = await new Promise((resolve) => {
+                                    activeBackend.restore_backup(file.name, base64Str, resolve);
+                                });
+                            } else {
+                                throw new Error("Unhandled FormData upload endpoint: " + url);
+                            }
+                            
+                            const resData = JSON.parse(responseStr);
+                            return new MockResponse(resData);
+                        } catch (e) {
+                            console.error("QWebChannel Form upload error:", e);
+                            return new Response(JSON.stringify({ detail: e.message }), {
+                                status: 500,
+                                headers: { 'Content-Type': 'application/json' }
+                            });
+                        }
+                    }
+                }
+
+                // Handle standard body (JSON/text)
+                let bodyStr = "";
+                if (init && init.body) {
+                    if (typeof init.body === 'string') {
+                        bodyStr = init.body;
+                    } else {
+                        bodyStr = JSON.stringify(init.body);
+                    }
+                }
+
+                try {
+                    const responseStr = await new Promise((resolve) => {
+                        activeBackend.call_api(method, url, bodyStr, JSON.stringify(headers), resolve);
+                    });
+                    const resData = JSON.parse(responseStr);
+                    return new MockResponse(resData);
+                } catch (e) {
+                    console.error("QWebChannel call failed:", e);
+                    return originalFetch(input, init);
+                }
+            }
+        }
+
+        // Fallback for non-API requests or if WebChannel is not available
+        return originalFetch(input, init);
+    };
+
+    class MockResponse {
+        constructor(data) {
+            this.status = data.status_code;
+            this.ok = this.status >= 200 && this.status < 300;
+            this.statusText = data.status_text || '';
+            this._content = data.content; // base64 string
+            this._is_base64 = data.is_base64;
+            
+            const headersMap = new Map();
+            if (data.headers) {
+                for (const [k, v] of Object.entries(data.headers)) {
+                    headersMap.set(k.toLowerCase(), v);
+                }
+            }
+            this.headers = {
+                get: (name) => headersMap.get(name.toLowerCase()) || null,
+                has: (name) => headersMap.has(name.toLowerCase()),
+                entries: () => headersMap.entries()
+            };
+        }
+        
+        async text() {
+            if (this._is_base64) {
+                const binaryStr = atob(this._content);
+                const bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                return new TextDecoder('utf-8').decode(bytes);
+            }
+            return this._content;
+        }
+        
+        async json() {
+            const text = await this.text();
+            return JSON.parse(text);
+        }
+        
+        async blob() {
+            let binaryStr = atob(this._content);
+            const len = binaryStr.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryStr.charCodeAt(i);
+            }
+            const mimeType = this.headers.get('content-type') || 'application/octet-stream';
+            return new Blob([bytes], { type: mimeType });
+        }
+    }
+})();
+
 // --- Globals ---
 const API_BASE = '/api';
 

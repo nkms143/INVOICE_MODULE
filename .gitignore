@@ -38,6 +38,8 @@ dist
 dist_setup
 *.spec*
 *.iss
+scratch/
+
 
 
 

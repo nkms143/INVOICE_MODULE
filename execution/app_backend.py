@@ -119,8 +119,9 @@ def ensure_schema(db_path):
             address_line_1 TEXT, address_line_2 TEXT, city TEXT,
             state_name TEXT, state_code TEXT NOT NULL, country TEXT DEFAULT 'India',
             pincode TEXT, place_id TEXT, gstin TEXT, pan_number TEXT,
-            bank_name TEXT, bank_account_no TEXT, bank_ifsc TEXT,
+            bank_name TEXT, bank_branch TEXT, bank_account_no TEXT, bank_ifsc TEXT, bank_address TEXT,
             declaration_text TEXT, terms_conditions TEXT, favicon_url TEXT,
+            email TEXT, mobile TEXT, landline TEXT, fax TEXT,
             is_default INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -128,7 +129,7 @@ def ensure_schema(db_path):
     # Check if extra columns exist (migration)
     cursor.execute("PRAGMA table_info(company_profile)")
     cols = [c[1] for c in cursor.fetchall()]
-    for col in ['is_default', 'bank_address', 'email', 'mobile', 'landline', 'fax', 'favicon_url']:
+    for col in ['is_default', 'bank_branch', 'bank_address', 'email', 'mobile', 'landline', 'fax', 'favicon_url']:
         if col not in cols:
             cursor.execute(f"ALTER TABLE company_profile ADD COLUMN {col} TEXT DEFAULT NULL")
     if 'is_default' in cols: # specific fix for type if needed, but TEXT/INTEGER is flexible
@@ -183,7 +184,7 @@ def ensure_schema(db_path):
             payment_mode_terms TEXT, reference_no TEXT, buyers_order_no TEXT,
             dispatch_doc_no TEXT, dispatched_through TEXT, destination TEXT,
             terms_of_delivery TEXT, total_taxable_value REAL, total_tax_amount REAL,
-            grand_total REAL, other_references TEXT, order_date TEXT,
+            grand_total REAL, other_references TEXT, order_date TEXT, remarks TEXT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (company_id) REFERENCES company_profile (id),
             FOREIGN KEY (client_id) REFERENCES clients (id),

@@ -20,7 +20,10 @@ def build():
     for folder in ['build', 'dist']:
         if os.path.exists(folder):
             print(f"[*] Cleaning {folder}...")
-            shutil.rmtree(folder)
+            try:
+                shutil.rmtree(folder)
+            except Exception as e:
+                print(f"[!] Warning: Could not clean {folder}: {e}. Proceeding anyway...")
 
     # PyInstaller arguments
     # Note: On Windows, the separator for --add-data is ';'
@@ -31,6 +34,7 @@ def build():
         '--onedir',                           # Create a folder
         '--noconsole',                        # No command window
         '--noupx',                            # Disable UPX compression to avoid AV false positives
+        '-y',                                 # Overwrite output directory without confirmation
         
         # Add Data Folders (using os.path.join for native separators)
         f'--add-data=frontend{os.path.sep}*;frontend',
@@ -38,17 +42,7 @@ def build():
         f'--add-data=execution{os.path.sep}uploads{os.path.sep}*;execution{os.path.sep}uploads',
         f'--add-data=execution{os.path.sep}invoices.db;execution',
         
-        # Hidden imports for Uvicorn
-        '--hidden-import=uvicorn.logging',
-        '--hidden-import=uvicorn.loops',
-        '--hidden-import=uvicorn.loops.auto',
-        '--hidden-import=uvicorn.protocols',
-        '--hidden-import=uvicorn.protocols.http',
-        '--hidden-import=uvicorn.protocols.http.auto',
-        '--hidden-import=uvicorn.protocols.websockets',
-        '--hidden-import=uvicorn.protocols.websockets.auto',
-        '--hidden-import=uvicorn.lifespan',
-        '--hidden-import=uvicorn.lifespan.on',
+        # No uvicorn server hidden imports needed anymore
     ]
 
     print("[*] Running PyInstaller...")
